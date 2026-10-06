@@ -1,0 +1,176 @@
+# ==============================================================================
+# KidSpeak - Root .gitignore
+# Quản lý bỏ qua các file nặng, file nhạy cảm cho AI, Backend, Frontend
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. BẢO MẬT & BIẾN MÔI TRƯỜNG (Private / Secrets)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+*.env
+# Giữ lại các file mẫu template cho team
+!.env.example
+!.env.template
+
+# Khóa bí mật, chứng chỉ SSL, Credentials
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*credentials*.json
+*client_secret*.json
+service_account*.json
+firebase-adminsdk*.json
+
+# ------------------------------------------------------------------------------
+# 2. FRONTEND (Node.js / Vue / Vite)
+# ------------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-ssr/
+build/
+out/
+
+# Vite / Package Manager Cache & Logs
+.vite/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------------------------------------------------------
+# 3. BACKEND (Python / FastAPI)
+# ------------------------------------------------------------------------------
+# Môi trường ảo (Virtual Environments)
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Database cục bộ
+*.db
+*.sqlite
+*.sqlite3
+
+# Thư mục upload, media & lưu trữ tạm
+uploads/
+media/
+storage/
+temp/
+tmp/
+
+# Logs backend
+logs/
+*.log
+
+# ------------------------------------------------------------------------------
+# 4. AI & MACHINE LEARNING (Speech Recognition, Model Weights, Datasets)
+# ------------------------------------------------------------------------------
+# Model Weights, Checkpoints & Pre-trained files (Dung lượng lớn: MB -> GB)
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
+*.onnx
+*.tflite
+*.h5
+*.keras
+*.engine
+*.weights
+*.pkl
+*.pickle
+*.joblib
+checkpoints/
+saved_models/
+model_weights/
+
+# Datasets & Âm thanh thu âm luyện phát âm (Datasets lớn)
+# Ngoại trừ các audio mẫu cho UI trong frontend/src/assets/ (nếu có)
+data/
+dataset/
+datasets/
+raw_data/
+processed_data/
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.ogg
+*.aac
+*.wma
+# Không ignore audio mẫu tĩnh thuộc giao diện (nếu có):
+!frontend/src/assets/**
+
+# AI Logging & Experiment Tracking
+wandb/
+runs/
+mlruns/
+lightning_logs/
+events.out.tfevents*
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# Hugging Face & PyTorch Cache
+.cache/
+hf_cache/
+transformers_cache/
+
+# ------------------------------------------------------------------------------
+# 5. FILE NÉN & DUNG LƯỢNG LỚN (Compressed Archives)
+# ------------------------------------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.iso
+
+# ------------------------------------------------------------------------------
+# 6. HỆ ĐIỀU HÀNH & TRÌNH SOẠN THẢO (OS & IDEs)
+# ------------------------------------------------------------------------------
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# IDEs & Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+*.bak
