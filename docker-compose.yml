@@ -1,0 +1,140 @@
+services:
+  # ----------------------------------------------------------------------------
+  # 1. MEDIA STORAGE (MinIO - S3 Compatible Object Storage)
+  # ----------------------------------------------------------------------------
+  media:
+    image: ghcr.io/coollabsio/minio:latest
+    container_name: kidspeak-media
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - kidspeak-net
+    healthcheck:
+      test: ["CMD", "/usr/bin/mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Tự động khởi tạo bucket kidspeak-media và phân quyền tải công khai cho frontend
+  media-init:
+    image: ghcr.io/coollabsio/minio:latest
+    container_name: kidspeak-media-init
+    depends_on:
+      media:
+        condition: service_healthy
+    networks:
+      - kidspeak-net
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://media:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+      /usr/bin/mc mb myminio/${MINIO_BUCKET_NAME:-kidspeak-media} --ignore-existing;
+      /usr/bin/mc anonymous set download myminio/${MINIO_BUCKET_NAME:-kidspeak-media};
+      echo 'MinIO media bucket is ready.';
+      exit 0;
+      "
+
+
+  # ----------------------------------------------------------------------------
+  # 2. AI SERVICE (FastAPI - Nhận dạng giọng nói & Đánh giá phát âm)
+  # ----------------------------------------------------------------------------
+  ai:
+    build:
+      context: ./ai
+      dockerfile: Dockerfile
+    container_name: kidspeak-ai
+    restart: unless-stopped
+    environment:
+      AI_SERVICE_PORT: ${AI_SERVICE_PORT:-8001}
+      DEVICE: ${AI_DEVICE:-cpu}
+      SAMPLE_RATE: ${SAMPLE_RATE:-16000}
+      MODEL_WEIGHTS_DIR: models/weights
+    ports:
+      - "${AI_SERVICE_PORT:-8001}:8001"
+    volumes:
+      - ./ai:/app
+    networks:
+      - kidspeak-net
+
+  # ----------------------------------------------------------------------------
+  # 3. BACKEND API (FastAPI)
+  # (Kết nối tới Database PostgreSQL cài đặt trực tiếp dưới máy Local)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kidspeak-backend
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      APP_NAME: ${APP_NAME:-KidSpeak-Backend}
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-True}
+      HOST: 0.0.0.0
+      PORT: ${BACKEND_PORT:-8000}
+      SECRET_KEY: ${SECRET_KEY:-replace-with-a-very-strong-secret-key}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-kidspeak_db}
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/${DB_NAME:-kidspeak_db}
+      ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      AI_SERVICE_URL: http://ai:8001
+      MINIO_ENDPOINT: media:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-kidspeak-media}
+      MINIO_SECURE: "False"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    networks:
+      - kidspeak-net
+    depends_on:
+      media:
+        condition: service_healthy
+      ai:
+        condition: service_started
+
+  # ----------------------------------------------------------------------------
+  # 4. FRONTEND (Vue 3 + Vite)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kidspeak-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api}
+      VITE_MEDIA_BASE_URL: ${VITE_MEDIA_BASE_URL:-http://localhost:9000/kidspeak-media}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - kidspeak-net
+    depends_on:
+      - backend
+
+volumes:
+  minio_data:
+    driver: local
+
+networks:
+  kidspeak-net:
+    driver: bridge
