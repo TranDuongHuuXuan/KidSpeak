@@ -2,6 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.schemas.user_schema import UserSchema
+
 
 # ── Register schema ───────────────────────────────────────────────────────────
 class RegisterSchema(BaseModel):
@@ -54,3 +56,10 @@ class VerifyOTPSchema(BaseModel):
 
     email: EmailStr = Field(..., description="Registered email")
     otp: str = Field(..., min_length=4, max_length=10, description="OTP code")
+
+class LoginResponseSchema(BaseModel):
+    access_token: str
+    user_principal: UserSchema
+
+    class Config:
+        from_attributes = True

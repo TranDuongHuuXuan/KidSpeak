@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.auth_schema import RegisterSchema
+from app.schemas.auth_schema import RegisterSchema, LoginSchema, LoginResponseSchema
 from app.schemas.base_schema import DataResponse
 from app.schemas.user_schema import UserSchema
 from app.service.auth_service import AuthService
@@ -64,4 +64,34 @@ async def register(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Đã xảy ra lỗi: {str(e)}",
+        )
+
+@auth_router.post(
+    "/login",
+    response_model=DataResponse[LoginResponseSchema],
+    status_code=status.HTTP_200_OK,
+)
+async def login(
+    data: LoginSchema,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = AuthService.login_user(db, data)
+
+        return DataResponse.custom_response(
+            data=result,
+            code="200",
+            message="Login successfully"
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
         )
