@@ -1,10 +1,16 @@
 import socket
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.responses import JSONResponse
 
 from app.config.config import settings
+from app.controller.auth_controller import auth_router
 from app.core.logger import logger
+from app.middleware.auth_middleware import AuthMiddleware
+
+API_PREFIX = "/api"
 
 def check_connection(host: str, port: int, timeout: float = 1.0) -> bool:
     try:
@@ -58,6 +64,51 @@ app = FastAPI(
     description="Backend API for KidSpeak - AI-powered Vietnamese pronunciation learning platform for children",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    field_messages = {
+        "username": (
+            "Tên đăng nhập phải có ít nhất 3 ký tự, tối đa 100 ký tự "
+            "và không chứa khoảng trắng."
+        ),
+        "email": "Email không đúng định dạng.",
+        "password": (
+            "Mật khẩu phải có ít nhất 6 ký tự, tối đa 255 ký tự "
+            "và chứa ít nhất 1 chữ số."
+        ),
+        "date_of_birth": "Ngày sinh phải theo định dạng YYYY-MM-DD.",
+        "otp": "Mã OTP phải có từ 4 đến 10 ký tự.",
+    }
+    messages = []
+    for error in exc.errors():
+        location = error.get("loc", ())
+        if error["type"] == "json_invalid" or location == ("body",):
+            message = "Dữ liệu JSON không hợp lệ hoặc sai cấu trúc."
+        else:
+            field = location[-1] if location else None
+            if error["type"] == "missing":
+                message = f"Vui lòng cung cấp trường {field}."
+            else:
+                message = field_messages.get(field, "Thông tin yêu cầu không hợp lệ.")
+        if message not in messages:
+            messages.append(message)
+
+    return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "message": " ".join(messages),
+        },
+    )
+
+
+app.include_router(auth_router, prefix=API_PREFIX)
+app.add_middleware(AuthMiddleware, api_prefix=API_PREFIX)
 
 # Cấu hình CORS
 app.add_middleware(
