@@ -2,12 +2,14 @@ from datetime import datetime, date
 from typing import Optional
 
 from sqlalchemy.orm import Session
-
+from fastapi.encoders import jsonable_encoder
 from app.models.user import User
 from app.models.role import Role
-from app.schemas.auth_schema import RegisterSchema
+from app.schemas.auth_schema import RegisterSchema,LoginSchema, LoginResponseSchema
 from app.utils.password import hash_password
-
+from app.utils.auth import generate_token
+from app.utils.password import verify_password
+from app.schemas.user_schema import UserSchema
 # Default role assigned on registration
 ROLE_USER = "USER"
 
@@ -108,3 +110,38 @@ class AuthService:
         except Exception:
             db.rollback()
             raise
+
+    @staticmethod
+    def login_user(db: Session, data: LoginSchema) -> LoginResponseSchema:
+        # Find user by email
+        existing_user = db.query(User).filter(User.email == data.email).first()
+        
+        if not existing_user:
+            raise ValueError("Không tìm thấy người dùng hoặc sai mật khẩu")
+        
+        # Verify password
+        if not verify_password(data.password, existing_user.password):
+            raise ValueError("Không tìm thấy người dùng hoặc sai mật khẩu")
+        
+        if not existing_user.is_active:
+            raise ValueError("Tài khoản của bạn đã bị khóa.")
+        
+        # Get role information
+        role = jsonable_encoder(existing_user.role)
+        
+        # Generate access token
+        access_token = generate_token(
+            data={
+                "sub": str(existing_user.id),
+                "email": existing_user.email,
+                "role": role['name'],
+            }
+        )
+        
+        # Create login response
+        login_response = LoginResponseSchema(
+            access_token=access_token,
+            user_principal=UserSchema.model_validate(existing_user)
+        )
+        
+        return login_response

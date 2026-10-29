@@ -210,5 +210,5 @@ def require_admin(func):
         user = await check_admin(request)
         
         return await func(*args, **kwargs)
-    
     return wrapper
+

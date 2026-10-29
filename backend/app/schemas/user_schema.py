@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 # ── User response schema ──────────────────────────────────────────────────────
@@ -46,3 +46,18 @@ class LoginResponseSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UserSchema(BaseModel):
+    """Schema for user response (without password)."""
+
+    id: int
+    username: str
+    email: str
+    role_id: int | None = None
+    date_of_birth: datetime | None = None
+    avatar: str | None = None
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
