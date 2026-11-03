@@ -2,7 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import RegisterView from '../views/RegisterView.vue'
-
+import AppHeader from '../components/common/AppHeader.vue'
+import AppFooter from '../components/common/Footer.vue'
 const routes = [
   {
     path: '/',
@@ -19,6 +20,18 @@ const routes = [
     name: 'Register',
     component: RegisterView,
     meta: { title: 'Đăng ký' },
+  },
+  {
+    path: '/header-preview',
+    name: 'HeaderPreview',
+    component: AppHeader,
+    meta: { title: 'Xem trước Header' },
+  },
+  {
+    path: '/footer-preview',
+    name: 'FooterPreview',
+    component: AppFooter,
+    meta: { title: 'Xem trước Footer' },
   },
   {
     path: '/:pathMatch(.*)*',
