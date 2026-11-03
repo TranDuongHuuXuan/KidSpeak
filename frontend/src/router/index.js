@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
+import RegisterView from '../views/RegisterView.vue'
 
 const routes = [
   {
@@ -12,6 +13,12 @@ const routes = [
     name: 'Login',
     component: LoginView,
     meta: { title: 'Đăng nhập' },
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: RegisterView,
+    meta: { title: 'Đăng ký' },
   },
   {
     path: '/:pathMatch(.*)*',
