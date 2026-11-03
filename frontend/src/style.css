@@ -1,82 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", Arial, sans-serif;
+
+  --color-kids-bg: #fffdf5;
+  --color-kids-surface: #ffffff;
+  --color-kids-primary: #ffc107;
+  --color-kids-secondary: #4fc3f7;
+  --color-kids-cta: #ff7043;
+  --color-kids-text: #263238;
+
+  --color-admin-bg: #f8fafc;
+  --color-admin-surface: #ffffff;
+  --color-admin-primary: #1e293b;
+  --color-admin-secondary: #64748b;
+  --color-admin-cta: #2563eb;
+  --color-admin-text: #334155;
+
+  --color-feedback-success: #4caf50;
+  --color-feedback-warning: #ffb300;
+  --color-feedback-error: #ef5350;
+  --color-feedback-info: #2196f3;
+}
+
+@theme inline {
+  --color-theme-primary: var(--color-primary);
+  --color-theme-secondary: var(--color-secondary);
+  --color-theme-accent: var(--color-accent);
+  --color-theme-background: var(--color-background);
+  --color-theme-surface: var(--color-surface);
+  --color-theme-text: var(--color-text);
+}
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  --color-primary: var(--color-kids-primary);
+  --color-secondary: var(--color-kids-secondary);
+  --color-accent: var(--color-kids-cta);
+  --color-background: var(--color-kids-bg);
+  --color-surface: var(--color-kids-surface);
+  --color-text: var(--color-kids-text);
+  --color-text-heading: var(--color-kids-text);
+  --color-border: #e5e7eb;
+  --color-code-background: #f4f3ec;
+  --color-accent-background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  --color-accent-border: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  --color-social-background: rgb(38 50 56 / 5%);
+
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
   letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  color-scheme: light;
+  color: var(--color-text);
+  background: var(--color-background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+:root[data-theme='admin'],
+[data-theme='admin'] {
+  --color-primary: var(--color-admin-primary);
+  --color-secondary: var(--color-admin-secondary);
+  --color-accent: var(--color-admin-cta);
+  --color-background: var(--color-admin-bg);
+  --color-surface: var(--color-admin-surface);
+  --color-text: var(--color-admin-text);
+  --color-text-heading: var(--color-admin-primary);
+  --color-accent-background: color-mix(in srgb, var(--color-admin-cta) 10%, transparent);
+  --color-accent-border: color-mix(in srgb, var(--color-admin-cta) 50%, transparent);
+  --color-social-background: rgb(51 65 85 / 5%);
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+  --shadow:
+    rgb(15 23 42 / 10%) 0 10px 15px -3px,
+    rgb(15 23 42 / 5%) 0 4px 6px -2px;
 }
 
 body {
   margin: 0;
+  width: 100%;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-background);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+button,
+input,
+select,
+textarea,
+form {
+  font-family: var(--font-sans);
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+:focus-visible {
+  outline: 3px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-sans);
+    color: var(--color-text-heading);
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  button {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 600;
   }
 }
 p {
@@ -85,34 +161,34 @@ p {
 
 code,
 .counter {
-  font-family: var(--mono);
+  font-family: var(--font-sans);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--color-text-heading);
 }
 
 code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;
-  background: var(--code-bg);
+  background: var(--color-code-background);
 }
 
 .counter {
   font-size: 16px;
   padding: 5px 10px;
   border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
+  color: var(--color-primary);
+  background: var(--color-accent-background);
   border: 2px solid transparent;
   transition: border-color 0.3s;
   margin-bottom: 24px;
 
   &:hover {
-    border-color: var(--accent-border);
+    border-color: var(--color-accent-border);
   }
   &:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 }
@@ -157,15 +233,19 @@ code {
 }
 
 #app {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+#app > * {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 #center {
@@ -184,7 +264,7 @@ code {
 
 #next-steps {
   display: flex;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border);
   text-align: left;
 
   & > div {
@@ -208,11 +288,11 @@ code {
 }
 
 #docs {
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--color-border);
 
   @media (max-width: 1024px) {
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--color-border);
   }
 }
 
@@ -228,10 +308,10 @@ code {
   }
 
   a {
-    color: var(--text-h);
+    color: var(--color-text-heading);
     font-size: 16px;
     border-radius: 6px;
-    background: var(--social-bg);
+    background: var(--color-social-background);
     display: flex;
     padding: 6px 12px;
     align-items: center;
@@ -267,7 +347,7 @@ code {
 
 #spacer {
   height: 88px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border);
   @media (max-width: 1024px) {
     height: 48px;
   }
@@ -287,10 +367,10 @@ code {
 
   &::before {
     left: 0;
-    border-left-color: var(--border);
+    border-left-color: var(--color-border);
   }
   &::after {
     right: 0;
-    border-right-color: var(--border);
+    border-right-color: var(--color-border);
   }
 }
