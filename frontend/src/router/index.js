@@ -4,10 +4,14 @@ import NotFoundView from '../views/NotFoundView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import AppHeader from '../components/common/AppHeader.vue'
 import AppFooter from '../components/common/Footer.vue'
+import HomeView from '../views/HomeView.vue'
+
 const routes = [
   {
     path: '/',
-    redirect: { name: 'Login' },
+    name: 'Home',
+    component: HomeView,
+    meta: { title: 'Trang chủ' },
   },
   {
     path: '/login',
