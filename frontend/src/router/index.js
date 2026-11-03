@@ -15,6 +15,8 @@ import AdminVerification from '../views/admin/AdminVerification.vue'
 import AdminLessons from '../views/admin/AdminLessons.vue'
 import AdminNotifications from '../views/admin/AdminNotifications.vue'
 import AdminSettings from '../views/admin/AdminSettings.vue'
+import NewsPage from '../views/news/NewsPage.vue'
+import NewsDetailPage from '../views/news/NewsDetailPage.vue'
 
 const routes = [
   {
@@ -28,6 +30,18 @@ const routes = [
     name: 'About',
     component: AboutView,
     meta: { title: 'Giới thiệu & hướng dẫn' },
+  },
+  {
+    path: '/news',
+    name: 'News',
+    component: NewsPage,
+    meta: { title: 'Tin tức & Cập nhật' },
+  },
+  {
+    path: '/news/:slug',
+    name: 'NewsDetail',
+    component: NewsDetailPage,
+    meta: { title: 'Bài viết' },
   },
   {
     path: '/guest-learning',
