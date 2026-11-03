@@ -5,6 +5,7 @@ import RegisterView from '../views/RegisterView.vue'
 import AppHeader from '../components/common/AppHeader.vue'
 import AppFooter from '../components/common/Footer.vue'
 import HomeView from '../views/HomeView.vue'
+import AboutView from '../views/AboutView.vue'
 
 const routes = [
   {
@@ -12,6 +13,12 @@ const routes = [
     name: 'Home',
     component: HomeView,
     meta: { title: 'Trang chủ' },
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: AboutView,
+    meta: { title: 'Giới thiệu & hướng dẫn' },
   },
   {
     path: '/login',
