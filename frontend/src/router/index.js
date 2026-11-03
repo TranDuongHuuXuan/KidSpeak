@@ -6,6 +6,7 @@ import AppHeader from '../components/common/AppHeader.vue'
 import AppFooter from '../components/common/Footer.vue'
 import HomeView from '../views/HomeView.vue'
 import AboutView from '../views/AboutView.vue'
+import GuestLearningView from '../views/GuestLearningView.vue'
 
 const routes = [
   {
@@ -19,6 +20,18 @@ const routes = [
     name: 'About',
     component: AboutView,
     meta: { title: 'Giới thiệu & hướng dẫn' },
+  },
+  {
+    path: '/guest-learning',
+    name: 'GuestLearning',
+    component: GuestLearningView,
+    meta: { title: 'Khám phá bài học' },
+  },
+  {
+    path: '/guest-learning/:topicSlug',
+    name: 'GuestLearningTopic',
+    component: GuestLearningView,
+    meta: { title: 'Luyện phát âm' },
   },
   {
     path: '/login',
