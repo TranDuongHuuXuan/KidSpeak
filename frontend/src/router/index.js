@@ -7,6 +7,14 @@ import AppFooter from '../components/common/Footer.vue'
 import HomeView from '../views/HomeView.vue'
 import AboutView from '../views/AboutView.vue'
 import GuestLearningView from '../views/GuestLearningView.vue'
+import AdminLayout from '../layout/AdminLayout.vue'
+import AdminDashboard from '../views/admin/AdminDashboard.vue'
+import AdminUsers from '../views/admin/AdminUsers.vue'
+import AdminRoles from '../views/admin/AdminRoles.vue'
+import AdminVerification from '../views/admin/AdminVerification.vue'
+import AdminLessons from '../views/admin/AdminLessons.vue'
+import AdminNotifications from '../views/admin/AdminNotifications.vue'
+import AdminSettings from '../views/admin/AdminSettings.vue'
 
 const routes = [
   {
@@ -44,6 +52,20 @@ const routes = [
     name: 'Register',
     component: RegisterView,
     meta: { title: 'Đăng ký' },
+  },
+  {
+    path: '/admin',
+    component: AdminLayout,
+    redirect: { name: 'AdminDashboard' },
+    children: [
+      { path: 'dashboard', name: 'AdminDashboard', component: AdminDashboard, meta: { title: 'Tổng quan' } },
+      { path: 'users', name: 'AdminUsers', component: AdminUsers, meta: { title: 'Quản lý người dùng' } },
+      { path: 'roles', name: 'AdminRoles', component: AdminRoles, meta: { title: 'Quản lý phân quyền' } },
+      { path: 'verification', name: 'AdminVerification', component: AdminVerification, meta: { title: 'Xác thực giáo viên' } },
+      { path: 'lessons', name: 'AdminLessons', component: AdminLessons, meta: { title: 'Kiểm duyệt bài học' } },
+      { path: 'notifications', name: 'AdminNotifications', component: AdminNotifications, meta: { title: 'Thông báo hệ thống' } },
+      { path: 'settings', name: 'AdminSettings', component: AdminSettings, meta: { title: 'Cấu hình hệ thống' } },
+    ],
   },
   {
     path: '/header-preview',
