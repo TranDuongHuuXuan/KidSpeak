@@ -11,7 +11,7 @@ const navigationItems = [
   { label: 'Liên lạc', to: { path: '/', hash: '#contact' }, hash: '#contact' },
   { label: 'Nghiên cứu', to: { path: '/', hash: '#research' }, hash: '#research' },
   { label: 'Tin tức', to: { path: '/', hash: '#news' }, hash: '#news' },
-  { label: 'Bắt đầu học', to: { name: 'Register' } },
+  { label: 'Bắt đầu học', to: { name: 'GuestLearning' } },
 ]
 
 watch(
@@ -81,7 +81,7 @@ watch(
         </button>
 
         <RouterLink
-          :to="{ name: 'Register' }"
+          :to="{ name: 'GuestLearning' }"
           class="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-xl bg-kids-secondary px-5 text-sm font-semibold text-kids-text outline-none transition duration-200 hover:brightness-95 focus-visible:ring-4 focus-visible:ring-kids-secondary/40 active:scale-[0.98] sm:text-[15px]"
         >
           Bắt đầu học
@@ -152,7 +152,7 @@ watch(
             Sign in
           </RouterLink>
           <RouterLink
-            :to="{ name: 'Register' }"
+            :to="{ name: 'GuestLearning' }"
             class="flex h-11 flex-1 items-center justify-center rounded-xl bg-kids-secondary px-4 text-sm font-semibold text-kids-text transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kids-secondary/40 active:scale-[0.98]"
           >
             Bắt đầu học
