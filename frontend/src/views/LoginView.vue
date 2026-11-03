@@ -353,7 +353,7 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
                 <button
                   type="button"
                   class="flex h-12 min-w-0 items-center justify-center gap-2 rounded-2xl border border-kids-text/15 bg-white px-3 text-sm font-semibold text-kids-text transition hover:bg-kids-secondary/10 active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-kids-secondary/40"
-                  @click="handleGoogleLogin"
+                  @click="handleGoogleLogin"    
                 >
                   <svg viewBox="0 0 48 48" class="h-5 w-5 shrink-0" aria-hidden="true">
                     <path fill="#4285F4" d="M43.6 20.5H42V20H24v8h11.3A12 12 0 1 1 32 14.8l5.7-5.7A20 20 0 1 0 44 24c0-1.2-.1-2.4-.4-3.5Z" />
