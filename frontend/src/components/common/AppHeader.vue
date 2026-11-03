@@ -7,7 +7,7 @@ const route = useRoute()
 const mobileMenuOpen = ref(false)
 
 const navigationItems = [
-  { label: 'Thông tin', to: { path: '/', hash: '#about' }, hash: '#about' },
+  { label: 'Thông tin', to: { path: '/about', hash: '#about' }, hash: '#about' },
   { label: 'Liên lạc', to: { path: '/', hash: '#contact' }, hash: '#contact' },
   { label: 'Nghiên cứu', to: { path: '/', hash: '#research' }, hash: '#research' },
   { label: 'Tin tức', to: { path: '/', hash: '#news' }, hash: '#news' },
