@@ -15,6 +15,11 @@ import AdminVerification from '../views/admin/AdminVerification.vue'
 import AdminLessons from '../views/admin/AdminLessons.vue'
 import AdminNotifications from '../views/admin/AdminNotifications.vue'
 import AdminSettings from '../views/admin/AdminSettings.vue'
+import ExpertLayout from '../layout/ExpertLayout.vue'
+import ExpertDashboard from '../views/expert/ExpertDashboard.vue'
+import ExpertWorkspace from '../views/expert/ExpertWorkspace.vue'
+import StudentWorkspace from '../views/student/StudentWorkspace.vue'
+import StudentResults from '../views/student/StudentResults.vue'
 import NewsPage from '../views/news/NewsPage.vue'
 import NewsDetailPage from '../views/news/NewsDetailPage.vue'
 
@@ -66,6 +71,39 @@ const routes = [
     name: 'Register',
     component: RegisterView,
     meta: { title: 'Đăng ký' },
+  },
+  {
+    path: '/expert',
+    component: ExpertLayout,
+    redirect: { name: 'ExpertDashboard' },
+    children: [
+      { path: 'dashboard', name: 'ExpertDashboard', component: ExpertDashboard, meta: { title: 'Tổng quan', role: 'Expert' } },
+      { path: 'topics', name: 'ExpertTopics', component: ExpertWorkspace, meta: { title: 'Quản lý chủ đề', expertSection: 'topics', role: 'Expert' } },
+      { path: 'vocabulary', name: 'ExpertVocabulary', component: ExpertWorkspace, meta: { title: 'Quản lý từ vựng', expertSection: 'vocabulary', role: 'Expert' } },
+      { path: 'learning-paths', name: 'ExpertPaths', component: ExpertWorkspace, meta: { title: 'Lộ trình học tập', expertSection: 'paths', role: 'Expert' } },
+      { path: 'progress', name: 'ExpertProgress', component: ExpertWorkspace, meta: { title: 'Tiến độ học tập', expertSection: 'progress', role: 'Expert' } },
+      { path: 'students', name: 'ExpertStudents', component: ExpertWorkspace, meta: { title: 'Theo dõi học viên', expertSection: 'students', role: 'Expert' } },
+      { path: 'resources', name: 'ExpertResources', component: ExpertWorkspace, meta: { title: 'Kho học liệu', expertSection: 'resources', role: 'Expert' } },
+      { path: 'messages', name: 'ExpertMessages', component: ExpertWorkspace, meta: { title: 'Tin nhắn', expertSection: 'messages', role: 'Expert' } },
+      { path: 'profile', name: 'ExpertProfile', component: ExpertWorkspace, meta: { title: 'Hồ sơ cá nhân', expertSection: 'profile', role: 'Expert' } },
+      { path: 'settings', name: 'ExpertSettings', component: ExpertWorkspace, meta: { title: 'Cài đặt', expertSection: 'settings', role: 'Expert' } },
+    ],
+  },
+  {
+    path: '/student',
+    component: () => import('../layout/StudentLayout.vue'),
+    redirect: { name: 'StudentDashboard' },
+    children: [
+      { path: 'dashboard', name: 'StudentDashboard', component: () => import('../views/student/StudentDashboard.vue'), meta: { title: 'Tổng quan', role: 'Student' } },
+      { path: 'topics', name: 'StudentTopics', component: () => import('../views/student/StudentTopics.vue'), meta: { title: 'Chủ đề học tập', role: 'Student' } },
+      { path: 'topics/:topicSlug', name: 'StudentTopicDetail', component: () => import('../views/student/StudentTopicDetail.vue'), meta: { title: 'Chi tiết chủ đề', role: 'Student' } },
+      { path: 'topics/:topicSlug/practice/:wordId', name: 'StudentPronunciationPractice', component: () => import('../views/student/StudentPronunciation.vue'), meta: { title: 'Luyện phát âm', role: 'Student' } },
+      { path: 'pronunciation', name: 'StudentPronunciation', component: () => import('../views/student/StudentTopics.vue'), meta: { title: 'Luyện phát âm', role: 'Student' } },
+      { path: 'results', name: 'StudentResults', component: StudentResults, meta: { title: 'Kết quả học tập', role: 'Student' } },
+      { path: 'achievements', name: 'StudentAchievements', component: StudentWorkspace, meta: { title: 'Thành tích', studentSection: 'achievements', role: 'Student' } },
+      { path: 'messages', name: 'StudentMessages', component: () => import('../views/student/StudentMessages.vue'), meta: { title: 'Tin nhắn', studentSection: 'messages', role: 'Student' } },
+      { path: 'profile', name: 'StudentProfile', component: () => import('../views/student/StudentProfile.vue'), meta: { title: 'Hồ sơ cá nhân', studentSection: 'profile', role: 'Student' } },
+    ],
   },
   {
     path: '/admin',

@@ -24,7 +24,7 @@ export function useAudioRecorder() {
   const audioBlob = ref(null)
   const audioUrl = ref('')
   const errorMessage = ref('')
-  const hasRecording = computed(() => Boolean(audioBlob.value && audioUrl.value))
+  const hasRecording = computed(() => Boolean(audioBlob.value?.size > 0 && audioUrl.value))
 
   let mediaStream = null
   let recorder = null
@@ -101,10 +101,15 @@ export function useAudioRecorder() {
         isRecording.value = false
 
         if (!discardOnStop && chunks.length > 0) {
-          audioBlob.value = new Blob(chunks, {
+          const blob = new Blob(chunks, {
             type: recorder?.mimeType || chunks[0].type || 'audio/webm',
           })
-          audioUrl.value = URL.createObjectURL(audioBlob.value)
+          if (blob.size > 0) {
+            audioBlob.value = blob
+            audioUrl.value = URL.createObjectURL(blob)
+          } else {
+            errorMessage.value = 'Chưa thu được âm thanh. Hãy kiểm tra microphone và thử lại nhé.'
+          }
         }
 
         chunks = []
