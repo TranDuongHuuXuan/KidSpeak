@@ -69,3 +69,38 @@ docker compose down
 # Dừng và xóa toàn bộ dữ liệu database & media nếu muốn reset sạch
 docker compose down -v
 ```
+
+# Hướng dẫn sử dụng tone màu dự án
+Tạo Login View cho Actor trẻ em bằng Vue 3 + Vite + Tailwind CSS.
+
+Yêu cầu:
+- Sử dụng bảng màu khai báo bằng `@theme` trong `frontend/src/style.css`.
+- Background: `bg-kids-bg`.
+- Login card: `bg-kids-surface`.
+- Màu chủ đạo: `text-kids-text`.
+- Các chi tiết nổi bật: `bg-kids-primary`, `bg-kids-secondary`.
+- Nút đăng nhập: `bg-kids-cta`.
+- Thiết kế thân thiện, vui nhộn, phù hợp với trẻ em.
+- Card bo góc lớn, shadow nhẹ, khoảng cách thoáng.
+- Responsive trên desktop và mobile.
+- Không hardcode mã HEX trong component.
+- Tái sử dụng các component hiện có nếu phù hợp.
+
+Tạo Login View cho Actor Giảng viên và Admin bằng Vue 3 + Vite + Tailwind CSS.
+
+Yêu cầu:
+- Sử dụng bảng màu khai báo bằng `@theme` trong `frontend/src/style.css`.
+- Background: `bg-admin-bg`.
+- Login card: `bg-admin-surface`.
+- Primary: `bg-admin-primary`.
+- Secondary: `text-admin-secondary`.
+- CTA Button: `bg-admin-cta`.
+- Text: `text-admin-text`.
+- Thiết kế chuyên nghiệp, hiện đại, tối giản theo phong cách SaaS Dashboard.
+- Responsive trên desktop và mobile.
+- Không hardcode mã HEX trong component.
+- Tái sử dụng các component hiện có nếu phù hợp.
+
+Các utility feedback dùng chung: `text-feedback-success`, `text-feedback-warning`,
+`text-feedback-error` và `text-feedback-info` (có thể dùng các tiền tố màu khác
+như `bg-` hoặc `border-`).

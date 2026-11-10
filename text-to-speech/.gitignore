@@ -1,0 +1,11 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local speech models and generated audio
+models/
+*.wav
+*.mp3
+

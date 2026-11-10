@@ -110,6 +110,11 @@ model_weights/
 # Datasets & Âm thanh thu âm luyện phát âm (Datasets lớn)
 # Ngoại trừ các audio mẫu cho UI trong frontend/src/assets/ (nếu có)
 data/
+!frontend/src/data/
+frontend/src/data/*
+!frontend/src/data/learningTopics.js
+!frontend/src/data/adminMockData.js
+!frontend/src/data/news.js
 dataset/
 datasets/
 raw_data/
