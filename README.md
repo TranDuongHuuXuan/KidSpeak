@@ -49,7 +49,17 @@ docker compose ps
   - Mật khẩu: `minioadmin`
   - Bucket mặc định: `kidspeak-media` (tự động khởi tạo và phân quyền tải file)
 
-### 5. Xem logs
+### 5. Chạy AI app trực tiếp bằng Python và test Swagger
+Chạy từ thư mục `ai/app` (nếu cổng `8001` đang được Docker AI service sử dụng, hãy dừng service đó trước):
+
+```powershell
+cd ai\app
+python main.py
+```
+
+Mở [http://localhost:8001/docs](http://localhost:8001/docs), chọn `POST /analyze` → **Try it out**, nhập `tu_chuan`, chọn file ghi âm tại `audio`, rồi nhấn **Execute**. Kết quả trả về gồm điểm và chi tiết lỗi phát âm. Cần nhập `tu_chuan` để hệ thống biết từ chuẩn cần so sánh.
+
+### 6. Xem logs
 ```bash
 # Xem logs toàn bộ hệ thống
 docker compose logs -f
@@ -61,7 +71,7 @@ docker compose logs -f media
 docker compose logs -f frontend
 ```
 
-### 6. Dừng hệ thống
+### 7. Dừng hệ thống
 ```bash
 # Dừng các container
 docker compose down
