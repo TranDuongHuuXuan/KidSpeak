@@ -1,6 +1,6 @@
 import apiClient from '../api/axios'
-import { saveAccessToken } from '../api/authToken'
 import { API_ENDPOINTS } from '../config/apiEndpoints'
+import { authStore } from '../stores/authStore'
 
 export const authService = {
   async login({ email, password, remember = true }) {
@@ -11,11 +11,11 @@ export const authService = {
     )
     const loginData = response?.data
 
-    if (!loginData?.access_token) {
-      throw new Error('Phản hồi đăng nhập không có access token.')
+    if (!loginData?.access_token || !loginData?.user_principal) {
+      throw new Error('Phản hồi đăng nhập không có thông tin phiên hợp lệ.')
     }
 
-    saveAccessToken(loginData.access_token, remember)
+    authStore.setSession(loginData.access_token, loginData.user_principal, remember)
     return loginData
   },
 

@@ -7,7 +7,12 @@ from app.core.logger import logger
 from app.schemas.auth_schema import RegisterSchema, LoginSchema, LoginResponseSchema
 from app.schemas.base_schema import DataResponse
 from app.schemas.user_schema import UserSchema
-from app.service.auth_service import AuthService, RegistrationConflictError
+from app.service.auth_service import (
+    AuthService,
+    InactiveAccountError,
+    InvalidCredentialsError,
+    RegistrationConflictError,
+)
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -82,14 +87,21 @@ async def login(
             message="Login successfully"
         )
 
-    except ValueError as e:
+    except InvalidCredentialsError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email hoặc mật khẩu không chính xác.",
         )
 
-    except Exception as e:
+    except InactiveAccountError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tài khoản không hoạt động. Vui lòng liên hệ hỗ trợ.",
+        )
+
+    except Exception:
+        logger.error("Unexpected error while authenticating an account.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred: {str(e)}"
+            detail="Không thể đăng nhập lúc này. Vui lòng thử lại sau.",
         )

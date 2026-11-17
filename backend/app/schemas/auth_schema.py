@@ -66,7 +66,7 @@ class LoginSchema(BaseModel):
     """Input data for user login."""
 
     email: EmailStr = Field(..., description="Registered email")
-    password: str = Field(..., description="Password")
+    password: str = Field(..., min_length=1, description="Password")
 
 
 # ── OTP verification schema ───────────────────────────────────────────────────

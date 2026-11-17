@@ -22,6 +22,7 @@ import StudentWorkspace from '../views/student/StudentWorkspace.vue'
 import StudentResults from '../views/student/StudentResults.vue'
 import NewsPage from '../views/news/NewsPage.vue'
 import NewsDetailPage from '../views/news/NewsDetailPage.vue'
+import { authStore } from '../stores/authStore'
 
 const routes = [
   {
@@ -93,6 +94,7 @@ const routes = [
     path: '/student',
     component: () => import('../layout/StudentLayout.vue'),
     redirect: { name: 'StudentDashboard' },
+    meta: { requiresAuth: true },
     children: [
       { path: 'dashboard', name: 'StudentDashboard', component: () => import('../views/student/StudentDashboard.vue'), meta: { title: 'Tổng quan', role: 'Student' } },
       { path: 'topics', name: 'StudentTopics', component: () => import('../views/student/StudentTopics.vue'), meta: { title: 'Chủ đề học tập', role: 'Student' } },
@@ -148,9 +150,21 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  if (to.matched.some((record) => record.meta.requiresAuth) && !authStore.isAuthenticated()) {
+    return { name: 'Login' }
+  }
+
   document.title = to.meta.title
     ? `${to.meta.title} | KidSpeak`
     : 'KidSpeak'
 })
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('kidspeak:auth-expired', () => {
+    if (router.currentRoute.value.matched.some((record) => record.meta.requiresAuth)) {
+      void router.replace({ name: 'Login' })
+    }
+  })
+}
 
 export default router

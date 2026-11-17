@@ -1,9 +1,14 @@
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
-import { consumeFlashToast } from '../services/flashToast'
+import { useRouter } from 'vue-router'
+import { authService } from '../services/authService'
+import { consumeFlashToast, setFlashToast } from '../services/flashToast'
 
+const router = useRouter()
 const successToast = ref('')
+const errorToast = ref('')
 let successToastTimer
+let errorToastTimer
 
 onMounted(() => {
   successToast.value = consumeFlashToast() || ''
@@ -16,19 +21,20 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearTimeout(successToastTimer)
+  clearTimeout(errorToastTimer)
 })
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 const form = reactive({
-  identifier: '',
+  email: '',
   password: '',
   remember: true,
 })
 
 const errors = reactive({
-  identifier: '',
+  email: '',
   password: '',
   form: '',
 })
@@ -36,68 +42,71 @@ const errors = reactive({
 const showPassword = ref(false)
 const loading = ref(false)
 
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const USERNAME_RE = /^[\p{L}\p{N}._-]{3,}$/u
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-function validateIdentifier() {
-  const value = form.identifier.trim()
+function validateEmail() {
+  const value = form.email.trim()
   if (!value) {
-    errors.identifier = 'Bạn chưa nhập tên đăng nhập hoặc email.'
-  } else if (value.includes('@') ? !EMAIL_RE.test(value) : !USERNAME_RE.test(value)) {
-    errors.identifier = 'Tên đăng nhập hoặc email chưa đúng. Bạn kiểm tra lại nhé.'
+    errors.email = 'Bạn chưa nhập địa chỉ email.'
+  } else if (!EMAIL_RE.test(value)) {
+    errors.email = 'Địa chỉ email chưa đúng định dạng.'
   } else {
-    errors.identifier = ''
+    errors.email = ''
   }
-  return !errors.identifier
+  return !errors.email
 }
 
 function validatePassword() {
   if (!form.password) {
     errors.password = 'Bạn chưa nhập mật khẩu.'
-  } else if (form.password.length < 6) {
-    errors.password = 'Mật khẩu cần có ít nhất 6 ký tự.'
   } else {
     errors.password = ''
   }
   return !errors.password
 }
 
-// ---------------------------------------------------------------------------
-// Submit
-// ---------------------------------------------------------------------------
-/**
- * TODO: Kết nối API đăng nhập khi có thông tin backend.
- * Hàm này nhận payload { identifier, password, remember } và
- * cần trả về kết quả đăng nhập (hoặc throw lỗi nếu thất bại).
- * Hiện tại KHÔNG giả lập đăng nhập thành công.
- */
-async function requestLogin(/* payload */) {
-  throw new Error('NOT_IMPLEMENTED')
+function showLoginError(message) {
+  errorToast.value = message
+  clearTimeout(errorToastTimer)
+  errorToastTimer = setTimeout(() => {
+    errorToast.value = ''
+  }, 4000)
+}
+
+function getLoginErrorMessage(error) {
+  if (error?.status === 401 || error?.status === 400) {
+    return 'Email hoặc mật khẩu không chính xác.'
+  }
+  if (error?.status === 403) {
+    return 'Tài khoản không hoạt động. Vui lòng liên hệ hỗ trợ.'
+  }
+  if (error?.status >= 500) {
+    return 'Máy chủ đang gặp sự cố. Vui lòng thử lại sau.'
+  }
+  return error?.message || 'Không thể đăng nhập. Vui lòng thử lại.'
 }
 
 async function handleSubmit() {
+  if (loading.value) return
   errors.form = ''
 
-  const okIdentifier = validateIdentifier()
+  const okEmail = validateEmail()
   const okPassword = validatePassword()
-  if (!okIdentifier || !okPassword) return
+  if (!okEmail || !okPassword) return
 
   loading.value = true
   try {
-    await requestLogin({
-      identifier: form.identifier.trim(),
+    await authService.login({
+      email: form.email.trim(),
       password: form.password,
       remember: form.remember,
     })
-    // TODO: điều hướng sau khi đăng nhập thành công (router.push(...)).
-  } catch (err) {
-    errors.form =
-      err?.message === 'NOT_IMPLEMENTED'
-        ? 'Chức năng đăng nhập chưa được kết nối với máy chủ.'
-        : 'Đăng nhập chưa được. Bạn kiểm tra lại thông tin rồi thử lại nhé.'
+    setFlashToast('Đăng nhập thành công! Chào mừng bạn quay trở lại KidSpeak.')
+    await router.push('/student/dashboard')
+  } catch (error) {
+    const message = getLoginErrorMessage(error)
+    errors.form = message
+    showLoginError(message)
   } finally {
     loading.value = false
   }
@@ -150,6 +159,30 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
         >
           &times;
         </button>
+      </div>
+    </Transition>
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="-translate-y-2 opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="-translate-y-2 opacity-0"
+    >
+      <div
+        v-if="errorToast"
+        class="fixed right-4 top-4 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-kids-cta/40 bg-kids-surface p-4 text-kids-text shadow-xl sm:right-6 sm:top-6"
+        role="alert"
+        aria-live="assertive"
+      >
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-kids-cta/15 text-kids-cta" aria-hidden="true">!</span>
+        <p class="flex-1 text-sm font-semibold">{{ errorToast }}</p>
+        <button
+          type="button"
+          class="rounded-lg px-1 text-lg leading-none text-kids-text/60 hover:text-kids-text"
+          aria-label="Đóng thông báo"
+          @click="errorToast = ''"
+        >&times;</button>
       </div>
     </Transition>
 
@@ -276,28 +309,28 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
               </div>
 
             <div class="flex flex-col gap-5">
-              <!-- Tên đăng nhập / email -->
+              <!-- Email -->
               <div class="flex flex-col gap-2">
-                <label for="identifier" class="block text-sm font-bold">
-                  Tên đăng nhập hoặc email
+                <label for="email" class="block text-sm font-bold">
+                  Email
                 </label>
                 <input
-                  id="identifier"
-                  v-model="form.identifier"
-                  type="text"
+                  id="email"
+                  v-model="form.email"
+                  type="email"
                   inputmode="email"
-                  autocomplete="username"
-                  placeholder="ten-cua-ban hoặc ban@example.com"
-                  :class="[inputBase, errors.identifier ? inputBad : inputOk]"
-                  :aria-invalid="!!errors.identifier"
-                  :aria-describedby="errors.identifier ? 'identifier-error' : undefined"
+                  autocomplete="email"
+                  placeholder="ban@example.com"
+                  :class="[inputBase, errors.email ? inputBad : inputOk]"
+                  :aria-invalid="!!errors.email"
+                  :aria-describedby="errors.email ? 'email-error' : undefined"
                   :disabled="loading"
-                  @blur="validateIdentifier"
-                  @input="errors.identifier && validateIdentifier()"
+                  @blur="validateEmail"
+                  @input="errors.email && validateEmail()"
                 />
-                <p v-if="errors.identifier" id="identifier-error" class="flex items-center gap-2 text-sm font-medium">
+                <p v-if="errors.email" id="email-error" class="flex items-center gap-2 text-sm font-medium">
                   <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-kids-cta text-xs font-bold" aria-hidden="true">!</span>
-                  {{ errors.identifier }}
+                  {{ errors.email }}
                 </p>
               </div>
 
@@ -310,7 +343,7 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
                     v-model="form.password"
                     :type="showPassword ? 'text' : 'password'"
                     autocomplete="current-password"
-                    placeholder="Ít nhất 6 ký tự"
+                    placeholder="Nhập mật khẩu"
                     :class="[inputBase, 'pr-14', errors.password ? inputBad : inputOk]"
                     :aria-invalid="!!errors.password"
                     :aria-describedby="errors.password ? 'password-error' : undefined"

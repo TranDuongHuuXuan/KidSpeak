@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from sqlalchemy.orm import Session
-from fastapi.encoders import jsonable_encoder
 from app.models.user import User
 from app.models.role import Role
 from app.schemas.auth_schema import RegisterSchema,LoginSchema, LoginResponseSchema
@@ -15,6 +14,14 @@ ROLE_USER = "USER"
 
 class RegistrationConflictError(ValueError):
     """Raised when registration conflicts with an existing user."""
+
+
+class InvalidCredentialsError(Exception):
+    """Raised when an email/password pair cannot be authenticated."""
+
+
+class InactiveAccountError(Exception):
+    """Raised when valid credentials belong to a disabled account."""
 
 
 class AuthService:
@@ -99,35 +106,27 @@ class AuthService:
 
     @staticmethod
     def login_user(db: Session, data: LoginSchema) -> LoginResponseSchema:
-        # Find user by email
         existing_user = db.query(User).filter(User.email == data.email).first()
-        
+
         if not existing_user:
-            raise ValueError("Không tìm thấy người dùng hoặc sai mật khẩu")
-        
-        # Verify password
+            raise InvalidCredentialsError
+
         if not verify_password(data.password, existing_user.password):
-            raise ValueError("Không tìm thấy người dùng hoặc sai mật khẩu")
-        
+            raise InvalidCredentialsError
+
         if not existing_user.is_active:
-            raise ValueError("Tài khoản của bạn đã bị khóa.")
-        
-        # Get role information
-        role = jsonable_encoder(existing_user.role)
-        
-        # Generate access token
+            raise InactiveAccountError
+
+        role_name = existing_user.role.name if existing_user.role else ROLE_USER
         access_token = generate_token(
             data={
                 "sub": str(existing_user.id),
                 "email": existing_user.email,
-                "role": role['name'],
+                "role": role_name,
             }
         )
-        
-        # Create login response
-        login_response = LoginResponseSchema(
+
+        return LoginResponseSchema(
             access_token=access_token,
             user_principal=UserSchema.model_validate(existing_user)
         )
-        
-        return login_response

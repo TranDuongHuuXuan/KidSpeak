@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { API_BASE_URL, API_TIMEOUT_MS } from '../config/apiUrl'
-import { clearAccessToken, getAccessToken } from './authToken'
+import { getAccessToken } from './authToken'
 import { normalizeApiError } from './apiError'
+import { authStore } from '../stores/authStore'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -31,7 +32,10 @@ apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      clearAccessToken()
+      authStore.clear()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('kidspeak:auth-expired'))
+      }
     }
 
     return Promise.reject(normalizeApiError(error))
