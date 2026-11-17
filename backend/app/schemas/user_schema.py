@@ -9,7 +9,7 @@ class UserSchema(BaseModel):
     """Response schema for user information — mapped from the User model."""
 
     id: int
-    username: str
+    full_name: str
     email: str
     role_id: Optional[int] = None
     date_of_birth: Optional[datetime] = None
@@ -27,7 +27,7 @@ class UserRegisterResponseSchema(BaseModel):
     """Slim response schema returned after registration — no sensitive fields."""
 
     id: int
-    username: str
+    full_name: str
     email: str
     is_active: bool
     created_at: datetime
@@ -51,7 +51,7 @@ class UserSchema(BaseModel):
     """Schema for user response (without password)."""
 
     id: int
-    username: str
+    full_name: str
     email: str
     role_id: int | None = None
     date_of_birth: datetime | None = None

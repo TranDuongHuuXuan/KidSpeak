@@ -1,5 +1,22 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { consumeFlashToast } from '../services/flashToast'
+
+const successToast = ref('')
+let successToastTimer
+
+onMounted(() => {
+  successToast.value = consumeFlashToast() || ''
+  if (successToast.value) {
+    successToastTimer = setTimeout(() => {
+      successToast.value = ''
+    }, 4000)
+  }
+})
+
+onUnmounted(() => {
+  clearTimeout(successToastTimer)
+})
 
 // ---------------------------------------------------------------------------
 // State
@@ -107,6 +124,35 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
 
 <template>
   <main class="min-h-screen bg-kids-bg text-kids-text lg:grid lg:grid-cols-2">
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="-translate-y-2 opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="-translate-y-2 opacity-0"
+    >
+      <div
+        v-if="successToast"
+        class="fixed right-4 top-4 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-feedback-success/30 bg-kids-surface p-4 text-kids-text shadow-xl sm:right-6 sm:top-6"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-feedback-success/15 text-feedback-success" aria-hidden="true">
+          ✓
+        </span>
+        <p class="flex-1 text-sm font-semibold">{{ successToast }}</p>
+        <button
+          type="button"
+          class="rounded-lg px-1 text-lg leading-none text-kids-text/60 hover:text-kids-text"
+          aria-label="Đóng thông báo"
+          @click="successToast = ''"
+        >
+          &times;
+        </button>
+      </div>
+    </Transition>
+
     <!-- ===================== Khu minh họa (desktop) ===================== -->
     <section
       class="relative hidden flex-col items-center justify-center gap-8 overflow-hidden px-12 py-12 lg:flex"

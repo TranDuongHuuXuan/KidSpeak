@@ -1,20 +1,26 @@
 <script setup>
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { authService } from '../services/authService'
+import { setFlashToast } from '../services/flashToast'
 
+const router = useRouter()
 const form = reactive({
-  username: '',
+  fullName: '',
   email: '',
   dateOfBirth: '',
   password: '',
   confirmPassword: '',
+  termsAccepted: false,
 })
 
 const errors = reactive({
-  username: '',
+  fullName: '',
   email: '',
   dateOfBirth: '',
   password: '',
   confirmPassword: '',
+  termsAccepted: '',
   form: '',
 })
 
@@ -24,20 +30,19 @@ const showConfirmPassword = ref(false)
 const successMessage = ref('')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const USERNAME_RE = /^[\p{L}\p{N}._-]{3,100}$/u
 const today = new Date()
 const maxDateOfBirth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-function validateUsername() {
-  const value = form.username.trim()
-  if (!value) {
-    errors.username = 'Bạn chưa nhập tên đăng nhập.'
-  } else if (!USERNAME_RE.test(value)) {
-    errors.username = 'Tên đăng nhập cần từ 3 đến 100 ký tự, chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.'
+function validateFullName() {
+  const value = form.fullName.trim()
+  if (value.length < 2) {
+    errors.fullName = 'Họ và tên cần có ít nhất 2 ký tự.'
+  } else if (value.length > 100) {
+    errors.fullName = 'Họ và tên không được vượt quá 100 ký tự.'
   } else {
-    errors.username = ''
+    errors.fullName = ''
   }
-  return !errors.username
+  return !errors.fullName
 }
 
 function validateEmail() {
@@ -78,10 +83,15 @@ function validateDateOfBirth() {
 function validatePassword() {
   if (!form.password) {
     errors.password = 'Bạn chưa nhập mật khẩu.'
-  } else if (form.password.length < 6) {
-    errors.password = 'Mật khẩu cần có ít nhất 6 ký tự.'
-  } else if (!/\d/.test(form.password)) {
-    errors.password = 'Mật khẩu cần có ít nhất một chữ số.'
+  } else if (form.password.length < 8 || new TextEncoder().encode(form.password).length > 72) {
+    errors.password = 'Mật khẩu cần từ 8 ký tự và không vượt quá 72 byte UTF-8.'
+  } else if (
+    !/[a-z]/.test(form.password) ||
+    !/[A-Z]/.test(form.password) ||
+    !/\d/.test(form.password) ||
+    !/[^a-zA-Z0-9]/.test(form.password)
+  ) {
+    errors.password = 'Mật khẩu cần có chữ hoa, chữ thường, chữ số và ký tự đặc biệt.'
   } else {
     errors.password = ''
   }
@@ -101,45 +111,30 @@ function validateConfirmPassword() {
   return !errors.confirmPassword
 }
 
+function validateTerms() {
+  errors.termsAccepted = form.termsAccepted
+    ? ''
+    : 'Bạn cần đồng ý với điều khoản sử dụng để đăng ký.'
+  return !errors.termsAccepted
+}
+
 async function requestRegister(payload) {
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api')
-    .replace(/\/+$/, '')
-  let response
-
-  try {
-    response = await fetch(`${apiBaseUrl}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-  } catch {
-    throw new Error('Không thể kết nối máy chủ. Bạn thử lại sau nhé.')
-  }
-
-  const result = await response.json().catch(() => null)
-  if (!response.ok) {
-    const detail = result?.detail
-    const message = typeof detail === 'string'
-      ? detail
-      : Array.isArray(detail)
-        ? detail.map((item) => item.msg).filter(Boolean).join(' ')
-        : ''
-    throw new Error(message || 'Đăng ký chưa thành công. Bạn kiểm tra lại thông tin nhé.')
-  }
-
-  return result
+  return authService.register(payload)
 }
 
 async function handleSubmit() {
+  if (loading.value) return
+
   errors.form = ''
   successMessage.value = ''
 
   const isValid = [
-    validateUsername(),
+    validateFullName(),
     validateEmail(),
     validateDateOfBirth(),
     validatePassword(),
     validateConfirmPassword(),
+    validateTerms(),
   ].every(Boolean)
 
   if (!isValid) return
@@ -147,12 +142,14 @@ async function handleSubmit() {
   loading.value = true
   try {
     const result = await requestRegister({
-      username: form.username.trim(),
+      full_name: form.fullName.trim(),
       email: form.email.trim(),
       password: form.password,
       date_of_birth: form.dateOfBirth,
     })
     successMessage.value = result?.message || 'Tạo tài khoản thành công. Bạn có thể đăng nhập ngay.'
+    setFlashToast(successMessage.value)
+    await router.push({ name: 'Login' })
   } catch (error) {
     errors.form = error instanceof Error
       ? error.message
@@ -270,25 +267,25 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
           <form class="flex flex-col gap-6" novalidate @submit.prevent="handleSubmit">
             <div class="flex flex-col gap-5">
               <div class="flex flex-col gap-2">
-                <label for="username" class="text-sm font-bold">Tên đăng nhập</label>
+                <label for="fullName" class="text-sm font-bold">Họ và tên</label>
                 <input
-                  id="username"
-                  v-model="form.username"
-                  :class="[inputBase, errors.username ? inputBad : inputOk]"
+                  id="fullName"
+                  v-model="form.fullName"
+                  :class="[inputBase, errors.fullName ? inputBad : inputOk]"
                   type="text"
-                  autocomplete="username"
-                  placeholder="Nhập tên đăng nhập của bạn"
+                  autocomplete="name"
+                  placeholder="Nhập họ và tên của bạn"
                   required
-                  minlength="3"
+                  minlength="2"
                   maxlength="100"
-                  :aria-invalid="!!errors.username"
-                  :aria-describedby="errors.username ? 'username-error' : undefined"
+                  :aria-invalid="!!errors.fullName"
+                  :aria-describedby="errors.fullName ? 'fullName-error' : undefined"
                   :disabled="loading"
-                  @blur="validateUsername"
-                  @input="errors.username && validateUsername()"
+                  @blur="validateFullName"
+                  @input="errors.fullName && validateFullName()"
                 />
-                <p v-if="errors.username" id="username-error" class="text-sm font-medium text-kids-cta" role="alert">
-                  {{ errors.username }}
+                <p v-if="errors.fullName" id="fullName-error" class="text-sm font-medium text-kids-cta" role="alert">
+                  {{ errors.fullName }}
                 </p>
               </div>
 
@@ -348,7 +345,8 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
                     autocomplete="new-password"
                     placeholder="Nhập mật khẩu của bạn"
                     required
-                    minlength="6"
+                    minlength="8"
+                    maxlength="72"
                     :aria-invalid="!!errors.password"
                     :aria-describedby="errors.password ? 'password-error' : 'password-hint'"
                     :disabled="loading"
@@ -374,7 +372,7 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
                   {{ errors.password }}
                 </p>
                 <p v-else id="password-hint" class="text-xs text-kids-text/60">
-                  Ít nhất 6 ký tự và có ít nhất một chữ số.
+                  Từ 8 ký tự, gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
                 </p>
               </div>
 
@@ -414,6 +412,25 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
                   {{ errors.confirmPassword }}
                 </p>
               </div>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label for="termsAccepted" class="flex items-start gap-3 text-sm">
+                <input
+                  id="termsAccepted"
+                  v-model="form.termsAccepted"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 rounded border-kids-text/30 accent-kids-secondary focus-visible:ring-4 focus-visible:ring-kids-secondary/40"
+                  :aria-invalid="!!errors.termsAccepted"
+                  :aria-describedby="errors.termsAccepted ? 'terms-error' : undefined"
+                  :disabled="loading"
+                  @change="validateTerms"
+                />
+                <span>Tôi đồng ý với điều khoản sử dụng.</span>
+              </label>
+              <p v-if="errors.termsAccepted" id="terms-error" class="pl-7 text-sm font-medium text-kids-cta" role="alert">
+                {{ errors.termsAccepted }}
+              </p>
             </div>
 
             <button
