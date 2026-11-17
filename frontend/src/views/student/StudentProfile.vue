@@ -186,7 +186,7 @@ onMounted(loadProfile)
               <img v-if="editing ? draft?.avatar : profile.avatar" :src="editing ? draft.avatar : profile.avatar" alt="Ảnh đại diện học sinh" class="h-full w-full object-cover" />
               <span v-else>{{ profile.name.split(' ').map((part) => part[0]).slice(0, 2).join('') }}</span>
             </div>
-            <div><h3 class="text-base font-extrabold text-kids-text">{{ profile.name }}</h3><p class="mt-1 text-xs text-slate-500">{{ profile.role }} · {{ profile.username }}</p>
+            <div><h3 class="text-base font-extrabold text-kids-text">{{ profile.name }}</h3><p class="mt-1 text-xs text-slate-500">{{ profile.role }} · {{ profile.fullName }}</p>
               <div v-if="editing" class="mt-2 flex flex-wrap gap-2">
                 <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-2 text-[10px] font-bold text-sky-800 hover:bg-sky-50"><AdminIcon name="image" :size="14" />{{ draft.avatar ? 'Đổi ảnh' : 'Chọn ảnh' }}<input ref="avatarInput" type="file" accept="image/*" class="sr-only" aria-label="Chọn ảnh đại diện" @change="previewAvatar" /></label>
                 <button v-if="draft.avatar" type="button" class="rounded-lg border border-rose-100 bg-white px-3 py-2 text-[10px] font-bold text-rose-600 hover:bg-rose-50" @click="removeAvatar">Xóa ảnh</button>
@@ -224,7 +224,7 @@ onMounted(loadProfile)
           </div>
           <div class="space-y-4">
             <h4 class="flex items-center gap-2 text-xs font-extrabold text-slate-700"><AdminIcon name="lock" :size="16" class="text-violet-700" />Thông tin tài khoản</h4>
-            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Tên đăng nhập<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.username }}</span></label>
+            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Họ và tên đăng ký<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.fullName }}</span></label>
             <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Email<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.email }}</span></label>
             <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Vai trò tài khoản<span class="flex min-h-10 items-center justify-between rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.role }}<AdminIcon name="lock" :size="14" /></span></label>
             <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Ngày tham gia<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ formatDate(profile.joinedAt) }}</span></label>

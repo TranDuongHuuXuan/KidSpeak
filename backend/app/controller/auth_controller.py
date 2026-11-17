@@ -3,10 +3,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.logger import logger
 from app.schemas.auth_schema import RegisterSchema, LoginSchema, LoginResponseSchema
 from app.schemas.base_schema import DataResponse
 from app.schemas.user_schema import UserSchema
-from app.service.auth_service import AuthService
+from app.service.auth_service import AuthService, RegistrationConflictError
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -18,7 +19,7 @@ auth_router = APIRouter(prefix="/auth", tags=["Auth"])
     status_code=status.HTTP_201_CREATED,
     summary="Đăng ký tài khoản mới",
     description=(
-        "Nhận thông tin đăng ký, kiểm tra trùng email/tên đăng nhập, "
+        "Nhận thông tin đăng ký, kiểm tra email đã tồn tại, "
         "lưu người dùng vào database với role USER và kích hoạt tài khoản ngay lập tức."
     ),
 )
@@ -35,35 +36,32 @@ async def register(
             message="Đăng ký tài khoản thành công.",
         )
 
-    except ValueError as e:
+    except RegistrationConflictError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         )
 
     except IntegrityError as e:
         db.rollback()
         err_msg = str(e.orig).lower() if e.orig else ""
-        if "email" in err_msg:
+        if "email" in err_msg or "ix_users_email" in err_msg:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email này đã tồn tại",
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email này đã được đăng ký.",
             )
-        if "username" in err_msg:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Tên đăng nhập này đã được sử dụng",
-            )
+        logger.error("Database error while registering an account.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Lỗi cơ sở dữ liệu",
+            detail="Không thể tạo tài khoản lúc này. Vui lòng thử lại sau.",
         )
 
-    except Exception as e:
+    except Exception:
         db.rollback()
+        logger.error("Unexpected error while registering an account.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Đã xảy ra lỗi: {str(e)}",
+            detail="Không thể tạo tài khoản lúc này. Vui lòng thử lại sau.",
         )
 
 @auth_router.post(

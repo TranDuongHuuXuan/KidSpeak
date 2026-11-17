@@ -1,5 +1,4 @@
-from datetime import datetime, date
-from typing import Optional
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
@@ -14,6 +13,10 @@ from app.schemas.user_schema import UserSchema
 ROLE_USER = "USER"
 
 
+class RegistrationConflictError(ValueError):
+    """Raised when registration conflicts with an existing user."""
+
+
 class AuthService:
     """Service handling user authentication logic."""
 
@@ -24,7 +27,7 @@ class AuthService:
         Register a new user.
 
         Steps:
-        1. Check if email / username already exists.
+        1. Check if email already exists.
         2. Hash the password.
         3. Save the user to the database with the USER role.
            (System roles: USER, ADMIN, EXPERT — expert/teacher)
@@ -38,16 +41,7 @@ class AuthService:
                 .first()
             )
             if existing_email:
-                raise ValueError("Email này đã được đăng ký")
-
-            # ── 1b. Check for duplicate username ──────────────────────────────
-            existing_username = (
-                db.query(User)
-                .filter(User.username == str(data.username))
-                .first()
-            )
-            if existing_username:
-                raise ValueError("Tên đăng nhập này đã được sử dụng")
+                raise RegistrationConflictError("Email này đã được đăng ký.")
 
             # ── 2. Hash the password ──────────────────────────────────────────
             hashed_password = hash_password(data.password)
@@ -67,20 +61,12 @@ class AuthService:
                 db.flush()  # get role.id before commit
 
             # ── 3b. Parse date of birth ───────────────────────────────────────
-            date_of_birth: Optional[datetime] = None
-            if data.date_of_birth:
-                try:
-                    parsed = date.fromisoformat(str(data.date_of_birth))
-                    date_of_birth = datetime(parsed.year, parsed.month, parsed.day)
-                except ValueError:
-                    raise ValueError(
-                        "Ngày sinh không hợp lệ, định dạng yêu cầu: YYYY-MM-DD"
-                    )
+            date_of_birth = datetime.combine(data.date_of_birth, datetime.min.time())
 
             # ── 3c. Create and persist the User ──────────────────────────────
             now = datetime.utcnow()
             user = User(
-                username=str(data.username),
+                full_name=data.full_name,
                 email=str(data.email),
                 password=str(hashed_password),
                 role_id=role.id,
@@ -97,7 +83,7 @@ class AuthService:
             # ── 4. Return created user data ───────────────────────────────────
             return {
                 "id": user.id,
-                "username": user.username,
+                "full_name": user.full_name,
                 "email": user.email,
                 "role_id": user.role_id,
                 "date_of_birth": user.date_of_birth,

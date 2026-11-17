@@ -72,17 +72,21 @@ async def handle_request_validation_error(
     exc: RequestValidationError,
 ) -> JSONResponse:
     field_messages = {
-        "username": (
-            "Tên đăng nhập phải có ít nhất 3 ký tự, tối đa 100 ký tự "
-            "và không chứa khoảng trắng."
+        "full_name": (
+            "Họ và tên phải có từ 2 đến 100 ký tự."
         ),
         "email": "Email không đúng định dạng.",
         "password": (
-            "Mật khẩu phải có ít nhất 6 ký tự, tối đa 255 ký tự "
-            "và chứa ít nhất 1 chữ số."
+            "Mật khẩu cần từ 8 ký tự, có chữ hoa, chữ thường, chữ số và ký tự đặc biệt."
         ),
         "date_of_birth": "Ngày sinh phải theo định dạng YYYY-MM-DD.",
         "otp": "Mã OTP phải có từ 4 đến 10 ký tự.",
+    }
+    field_labels = {
+        "full_name": "họ và tên",
+        "email": "email",
+        "password": "mật khẩu",
+        "date_of_birth": "ngày sinh",
     }
     messages = []
     for error in exc.errors():
@@ -92,7 +96,8 @@ async def handle_request_validation_error(
         else:
             field = location[-1] if location else None
             if error["type"] == "missing":
-                message = f"Vui lòng cung cấp trường {field}."
+                label = field_labels.get(field, field)
+                message = f"Vui lòng cung cấp {label}."
             else:
                 message = field_messages.get(field, "Thông tin yêu cầu không hợp lệ.")
         if message not in messages:

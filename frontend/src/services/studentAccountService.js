@@ -7,7 +7,7 @@ const PROFILE_IMAGE_KEY = 'kidspeak-student-profile-image-v1'
 
 const defaultAccount = {
   name: studentProfile.name,
-  username: 'minhanh02',
+  fullName: studentProfile.name,
   email: 'minh.anh@kidspeak.vn',
   phone: '0901 234 567',
   birthDate: '2018-05-12',
@@ -50,21 +50,27 @@ function setCurrentStudent(profile, avatar) {
 export const studentAccountService = {
   getProfile() {
     const storedProfile = readJson(PROFILE_KEY, defaultAccount, 'Không thể đọc hồ sơ đã lưu.')
-    const { avatar: _savedAvatar, ...profile } = storedProfile
+    const profile = {
+      ...defaultAccount,
+      ...storedProfile,
+      fullName: storedProfile.fullName || storedProfile.name || defaultAccount.fullName,
+    }
+    const { avatar: _savedAvatar, ...profileData } = profile
     let avatar = ''
     try {
       avatar = localStorage.getItem(PROFILE_IMAGE_KEY) || ''
     } catch (error) {
       throw new Error('Không thể đọc ảnh đại diện đã lưu.', { cause: error })
     }
-    setCurrentStudent(profile, avatar)
-    return { ...profile, avatar }
+    setCurrentStudent(profileData, avatar)
+    return { ...profileData, avatar }
   },
   saveProfile(updates) {
     const current = this.getProfile()
     const profile = {
       ...current,
       name: updates.name.trim(),
+      fullName: updates.name.trim(),
       phone: updates.phone.trim(),
       birthDate: updates.birthDate,
       gender: updates.gender,
