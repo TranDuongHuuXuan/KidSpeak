@@ -23,6 +23,7 @@ export function saveAuthSession(token, user, remember = true) {
     full_name: user.full_name,
     email: user.email,
     role_id: user.role_id,
+    role_name: user.role_name,
     avatar: user.avatar,
     is_active: user.is_active,
   }
@@ -31,6 +32,10 @@ export function saveAuthSession(token, user, remember = true) {
   otherStorage.removeItem(AUTH_USER_KEY)
   targetStorage.setItem(ACCESS_TOKEN_KEY, token)
   targetStorage.setItem(AUTH_USER_KEY, JSON.stringify(safeUser))
+}
+
+export function isRememberedSession() {
+  return Boolean(localStorage.getItem(ACCESS_TOKEN_KEY))
 }
 
 export function getStoredAuthUser() {

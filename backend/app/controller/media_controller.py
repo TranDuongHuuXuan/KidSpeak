@@ -5,6 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_current_user
 from app.core.logger import logger
 from app.models.user import User
 from app.schemas.base_schema import DataResponse
@@ -17,7 +18,11 @@ from app.service.media_storage_service import (
     media_storage_service,
 )
 
-media_router = APIRouter(prefix="/media", tags=["Media"])
+media_router = APIRouter(
+    prefix="/media",
+    tags=["Media"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _owned_avatar_key(object_key: str | None, user_id: int) -> bool:

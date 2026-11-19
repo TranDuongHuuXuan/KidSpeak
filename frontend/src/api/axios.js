@@ -31,11 +31,15 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !error.config?.skipAuth) {
       authStore.clear()
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('kidspeak:auth-expired'))
       }
+    } else if (error.response?.status === 403 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kidspeak:api-forbidden', {
+        detail: { message: error.response.data?.detail || 'Bạn không có quyền thực hiện thao tác này.' },
+      }))
     }
 
     return Promise.reject(normalizeApiError(error))

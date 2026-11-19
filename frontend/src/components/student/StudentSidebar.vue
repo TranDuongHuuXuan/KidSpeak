@@ -1,6 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import AdminIcon from '../admin/AdminIcon.vue'
+import { authStore } from '../../stores/authStore'
 import logo from '../../assets/logo_project.png'
 import { studentProfile } from '../../data/studentMockData'
 import { studentAccountService } from '../../services/studentAccountService'
@@ -40,8 +41,9 @@ const groups = [
 ]
 
 function logout() {
+  authStore.logout()
   emit('navigate')
-  router.push({ name: 'Login' })
+  router.push({ name: 'Home' })
 }
 </script>
 

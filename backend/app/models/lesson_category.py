@@ -14,8 +14,15 @@ class LessonCategory(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(200), nullable=False, unique=True)
     description = Column(Text, nullable=True)
+    image = Column(String(500), nullable=True)
     order = Column(Integer, nullable=True, default=0)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
 
     lessons = relationship(
         "Lesson",

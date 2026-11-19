@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.role import Role
+from app.core.security import normalize_role_name
 from app.schemas.auth_schema import RegisterSchema,LoginSchema, LoginResponseSchema
 from app.utils.password import hash_password
 from app.utils.auth import generate_token
@@ -117,7 +118,11 @@ class AuthService:
         if not existing_user.is_active:
             raise InactiveAccountError
 
-        role_name = existing_user.role.name if existing_user.role else ROLE_USER
+        role_name = normalize_role_name(
+            existing_user.role.name if existing_user.role else None
+        )
+        if role_name not in {"STUDENT", "EXPERT", "ADMIN"}:
+            raise InactiveAccountError
         access_token = generate_token(
             data={
                 "sub": str(existing_user.id),
@@ -126,7 +131,10 @@ class AuthService:
             }
         )
 
+        user_principal = UserSchema.model_validate(existing_user).model_copy(
+            update={"role_name": role_name}
+        )
         return LoginResponseSchema(
             access_token=access_token,
-            user_principal=UserSchema.model_validate(existing_user)
+            user_principal=user_principal,
         )

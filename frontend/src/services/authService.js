@@ -19,6 +19,14 @@ export const authService = {
     return loginData
   },
 
+  async getCurrentUser() {
+    const response = await apiClient.get(API_ENDPOINTS.AUTH.ME)
+    if (!response?.data?.id || !response.data.role_name) {
+      throw new Error('Phản hồi tài khoản hiện tại không hợp lệ.')
+    }
+    return response.data
+  },
+
   async register(payload) {
     return apiClient.post(
       API_ENDPOINTS.AUTH.REGISTER,

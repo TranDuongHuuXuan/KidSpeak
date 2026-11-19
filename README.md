@@ -56,6 +56,23 @@ docker compose ps
   - Mật khẩu: `minioadmin`
   - Bucket mặc định: `kidspeak-media` (tự động khởi tạo ở chế độ private)
 
+### Quản lý nội dung học tập (Expert)
+
+Đăng nhập trả JWT Bearer token; `/api/auth/me` xác minh phiên và trả role hiện tại
+từ database. Các API quản lý danh mục và bài học yêu cầu role `EXPERT` hoặc `ADMIN`:
+
+- `/api/lesson-categories`: CRUD danh mục, danh sách có phân trang.
+- `/api/lessons`: CRUD bài học; hỗ trợ lọc theo danh mục, mức độ, trạng thái xuất bản và tìm kiếm.
+- Ảnh được gửi bằng `multipart/form-data`, lưu trên MinIO và trả về dưới dạng URL có chữ ký.
+
+Trước khi chạy migration do dự án quản lý, kiểm tra các cột mới trong model:
+`lesson_categories.image`, `lesson_categories.updated_at`, và `lessons.image`.
+Backend không tự tạo hoặc chạy migration.
+
+Các khu vực `/student`, `/expert` và `/admin` yêu cầu đăng nhập và chỉ cho phép
+role tương ứng. Role DB hiện tên `USER` được chuẩn hóa thành `STUDENT` trong auth
+response/JWT; phân quyền backend luôn dựa trên role hiện tại trong database.
+
 Backend dùng `MediaStorageService` để kiểm tra định dạng và dung lượng trước khi lưu.
 Ảnh đại diện được lưu dưới dạng object key trong `users.avatar`; trình duyệt nhận
 presigned URL có thời hạn, không lưu URL này vào database. URL MinIO được ký cho

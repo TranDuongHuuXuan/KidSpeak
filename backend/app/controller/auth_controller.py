@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.logger import logger
+from app.core.security import get_current_user, normalize_role_name
 from app.schemas.auth_schema import RegisterSchema, LoginSchema, LoginResponseSchema
 from app.schemas.base_schema import DataResponse
 from app.schemas.user_schema import UserSchema
@@ -97,7 +98,7 @@ async def login(
     except InactiveAccountError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản không hoạt động. Vui lòng liên hệ hỗ trợ.",
+            detail="Tài khoản không hoạt động hoặc chưa được cấp quyền hợp lệ.",
         )
 
     except Exception:
@@ -106,3 +107,19 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Không thể đăng nhập lúc này. Vui lòng thử lại sau.",
         )
+
+
+@auth_router.get(
+    "/me",
+    response_model=DataResponse[UserSchema],
+    summary="Lấy tài khoản đang đăng nhập",
+)
+def get_me(current_user=Depends(get_current_user)):
+    user = UserSchema.model_validate(current_user).model_copy(
+        update={
+            "role_name": normalize_role_name(
+                current_user.role.name if current_user.role else None
+            )
+        }
+    )
+    return DataResponse(data=user)

@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import AdminIcon from './AdminIcon.vue'
 import logo from '../../assets/logo_project.png'
+import { authStore } from '../../stores/authStore'
 
 defineProps({ mobileOpen: { type: Boolean, default: false } })
 const emit = defineEmits(['navigate', 'close'])
@@ -18,8 +19,9 @@ const links = [
 ]
 
 function logout() {
+  authStore.logout()
   emit('navigate')
-  router.push({ name: 'Login' })
+  router.push({ name: 'Home' })
 }
 </script>
 

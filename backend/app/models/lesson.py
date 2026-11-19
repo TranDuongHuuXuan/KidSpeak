@@ -26,6 +26,7 @@ class Lesson(Base):
     )
     title = Column(String(300), nullable=False)
     description = Column(Text, nullable=True)
+    image = Column(String(500), nullable=True)
     level = Column(String(50), nullable=True)
     order = Column(Integer, nullable=True, default=0)
     is_published = Column(Boolean, nullable=False, default=True)

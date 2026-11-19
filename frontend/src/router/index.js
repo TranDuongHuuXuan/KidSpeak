@@ -20,6 +20,9 @@ import ExpertDashboard from '../views/expert/ExpertDashboard.vue'
 import ExpertWorkspace from '../views/expert/ExpertWorkspace.vue'
 import StudentWorkspace from '../views/student/StudentWorkspace.vue'
 import StudentResults from '../views/student/StudentResults.vue'
+import ExpertLessonCategories from '../views/expert/ExpertLessonCategories.vue'
+import ExpertLessons from '../views/expert/ExpertLessons.vue'
+import ExpertVocabularyPlaceholder from '../views/expert/ExpertVocabularyPlaceholder.vue'
 import NewsPage from '../views/news/NewsPage.vue'
 import NewsDetailPage from '../views/news/NewsDetailPage.vue'
 import { authStore } from '../stores/authStore'
@@ -65,7 +68,7 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: LoginView,
-    meta: { title: 'Đăng nhập' },
+    meta: { title: 'Đăng nhập', guestOnly: true },
   },
   {
     path: '/register',
@@ -77,8 +80,12 @@ const routes = [
     path: '/expert',
     component: ExpertLayout,
     redirect: { name: 'ExpertDashboard' },
+    meta: { requiresAuth: true, roles: ['EXPERT'] },
     children: [
       { path: 'dashboard', name: 'ExpertDashboard', component: ExpertDashboard, meta: { title: 'Tổng quan', role: 'Expert' } },
+      { path: 'lesson-categories', name: 'ExpertLessonCategories', component: ExpertLessonCategories, meta: { title: 'Quản lý chủ đề', requiresAuth: true, roles: ['EXPERT', 'ADMIN'] } },
+      { path: 'lessons', name: 'ExpertLessons', component: ExpertLessons, meta: { title: 'Quản lý bài học', requiresAuth: true, roles: ['EXPERT', 'ADMIN'] } },
+      { path: 'lesson-categories/:categoryId/vocabularies', name: 'ExpertCategoryVocabularies', component: ExpertVocabularyPlaceholder, meta: { title: 'Từ vựng theo chủ đề', requiresAuth: true, roles: ['EXPERT', 'ADMIN'] } },
       { path: 'topics', name: 'ExpertTopics', component: ExpertWorkspace, meta: { title: 'Quản lý chủ đề', expertSection: 'topics', role: 'Expert' } },
       { path: 'vocabulary', name: 'ExpertVocabulary', component: ExpertWorkspace, meta: { title: 'Quản lý từ vựng', expertSection: 'vocabulary', role: 'Expert' } },
       { path: 'learning-paths', name: 'ExpertPaths', component: ExpertWorkspace, meta: { title: 'Lộ trình học tập', expertSection: 'paths', role: 'Expert' } },
@@ -94,7 +101,7 @@ const routes = [
     path: '/student',
     component: () => import('../layout/StudentLayout.vue'),
     redirect: { name: 'StudentDashboard' },
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, roles: ['STUDENT'] },
     children: [
       { path: 'dashboard', name: 'StudentDashboard', component: () => import('../views/student/StudentDashboard.vue'), meta: { title: 'Tổng quan', role: 'Student' } },
       { path: 'topics', name: 'StudentTopics', component: () => import('../views/student/StudentTopics.vue'), meta: { title: 'Chủ đề học tập', role: 'Student' } },
@@ -111,6 +118,7 @@ const routes = [
     path: '/admin',
     component: AdminLayout,
     redirect: { name: 'AdminDashboard' },
+    meta: { requiresAuth: true, roles: ['ADMIN'] },
     children: [
       { path: 'dashboard', name: 'AdminDashboard', component: AdminDashboard, meta: { title: 'Tổng quan' } },
       { path: 'users', name: 'AdminUsers', component: AdminUsers, meta: { title: 'Quản lý người dùng' } },
@@ -149,9 +157,33 @@ const router = createRouter({
   },
 })
 
-router.beforeEach((to) => {
-  if (to.matched.some((record) => record.meta.requiresAuth) && !authStore.isAuthenticated()) {
-    return { name: 'Login' }
+router.beforeEach(async (to) => {
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  const guestOnly = to.matched.some((record) => record.meta.guestOnly)
+  let user = authStore.user
+  if (requiresAuth || guestOnly || authStore.hasSession) {
+    user = await authStore.restore(requiresAuth)
+    if (requiresAuth && !user) {
+      return { name: 'Login', query: { redirect: to.fullPath } }
+    }
+
+    if (guestOnly && user) {
+      return authStore.dashboardName
+        ? { name: authStore.dashboardName }
+        : { name: 'Home' }
+    }
+
+    const requiredRoles = requiresAuth
+      ? [...to.matched]
+        .reverse()
+        .find((record) => Array.isArray(record.meta.roles))
+        ?.meta.roles
+      : null
+    if (user && requiredRoles && !authStore.hasRole(requiredRoles)) {
+      return authStore.dashboardName
+        ? { name: authStore.dashboardName }
+        : { name: 'Home' }
+    }
   }
 
   document.title = to.meta.title
@@ -162,7 +194,10 @@ router.beforeEach((to) => {
 if (typeof window !== 'undefined') {
   window.addEventListener('kidspeak:auth-expired', () => {
     if (router.currentRoute.value.matched.some((record) => record.meta.requiresAuth)) {
-      void router.replace({ name: 'Login' })
+      void router.replace({
+        name: 'Login',
+        query: { redirect: router.currentRoute.value.fullPath },
+      })
     }
   })
 }
