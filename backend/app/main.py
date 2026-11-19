@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 
 from app.config.config import settings
 from app.controller.auth_controller import auth_router
+from app.controller.lesson_controller import lesson_router
 from app.controller.media_controller import media_router
 from app.core.logger import logger
 from app.middleware.auth_middleware import AuthMiddleware
@@ -115,6 +116,7 @@ async def handle_request_validation_error(
 
 app.include_router(auth_router, prefix=API_PREFIX)
 app.include_router(media_router, prefix=API_PREFIX)
+app.include_router(lesson_router, prefix=API_PREFIX)
 app.add_middleware(AuthMiddleware, api_prefix=API_PREFIX)
 
 # Cấu hình CORS

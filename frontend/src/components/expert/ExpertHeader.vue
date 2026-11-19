@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminIcon from '../admin/AdminIcon.vue'
 import { expertData } from '../../data/expertMockData'
+import { authStore } from '../../stores/authStore'
 
 defineProps({ title: { type: String, required: true } })
 const emit = defineEmits(['toggle-menu'])
@@ -18,6 +19,11 @@ function submitSearch() {
   if (!query) return
   router.push({ name: 'ExpertStudents', query: { q: query } })
   search.value = ''
+}
+
+function logout() {
+  authStore.logout()
+  router.push({ name: 'Home' })
 }
 </script>
 
@@ -56,7 +62,7 @@ function submitSearch() {
       </div>
       <div class="hidden text-right sm:block"><p class="text-sm font-semibold text-slate-700">Trần Thị Ngọc</p><p class="text-xs text-slate-400">Giảng viên</p></div>
       <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">TN</div>
-      <RouterLink :to="{ name: 'Login' }" class="hidden rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 sm:block" title="Đăng xuất" aria-label="Đăng xuất"><AdminIcon name="logout" :size="18" /></RouterLink>
+      <button type="button" class="hidden rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 sm:block" title="Đăng xuất" aria-label="Đăng xuất" @click="logout"><AdminIcon name="logout" :size="18" /></button>
     </div>
   </header>
 </template>

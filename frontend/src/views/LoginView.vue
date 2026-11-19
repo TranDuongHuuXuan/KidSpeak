@@ -1,10 +1,12 @@
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { authService } from '../services/authService'
+import { authStore } from '../stores/authStore'
 import { consumeFlashToast, setFlashToast } from '../services/flashToast'
 
 const router = useRouter()
+const route = useRoute()
 const successToast = ref('')
 const errorToast = ref('')
 let successToastTimer
@@ -102,7 +104,14 @@ async function handleSubmit() {
       remember: form.remember,
     })
     setFlashToast('Đăng nhập thành công! Chào mừng bạn quay trở lại KidSpeak.')
-    await router.push('/student/dashboard')
+    const redirect = typeof route.query.redirect === 'string'
+      && route.query.redirect.startsWith('/')
+      && !route.query.redirect.startsWith('//')
+      ? route.query.redirect
+      : authStore.dashboardName
+        ? { name: authStore.dashboardName }
+        : { name: 'Home' }
+    await router.replace(redirect)
   } catch (error) {
     const message = getLoginErrorMessage(error)
     errors.form = message

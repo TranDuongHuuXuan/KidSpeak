@@ -3,6 +3,7 @@ from fastapi.exceptions import HTTPException
 from pydantic import BaseModel
 from app.config.config import settings
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError
 
@@ -16,10 +17,15 @@ def generate_token(data: dict[str, Any], exprices_delta: Optional[int] = None) -
             to_encode[key] = value.isoformat()
         else:
             to_encode[key] = value
-    exprice = datetime.now(timezone.utc) + timedelta(
+    issued_at = datetime.now(timezone.utc)
+    exprice = issued_at + timedelta(
         minutes=exprices_delta if exprices_delta else settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    to_encode.update({"exp": int(exprice.timestamp())})
+    to_encode.update({
+        "iat": int(issued_at.timestamp()),
+        "exp": int(exprice.timestamp()),
+        "jti": str(uuid4()),
+    })
     encode_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encode_jwt
 
@@ -40,8 +46,13 @@ def extract_email(token: str) -> Optional[str]:
 
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes=15)):
     to_encode = data.copy()
-    expire = datetime.utcnow() + expires_delta
-    to_encode.update({"exp": expire})
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + expires_delta
+    to_encode.update({
+        "iat": int(issued_at.timestamp()),
+        "exp": int(expire.timestamp()),
+        "jti": str(uuid4()),
+    })
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 

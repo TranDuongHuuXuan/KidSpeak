@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminIcon from '../admin/AdminIcon.vue'
 import { studentMockDashboard, studentProfile } from '../../data/studentMockData'
 import { studentAccountService } from '../../services/studentAccountService'
+import { authStore } from '../../stores/authStore'
 
 try {
   studentAccountService.getProfile()
@@ -25,6 +26,12 @@ function submitSearch() {
   if (!query) return
   router.push({ name: 'StudentTopics', query: { q: query } })
   search.value = ''
+}
+
+function logout() {
+  authStore.logout()
+  accountOpen.value = false
+  router.push({ name: 'Home' })
 }
 </script>
 
@@ -83,9 +90,9 @@ function submitSearch() {
           <RouterLink :to="{ name: 'StudentProfile' }" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-amber-50" @click="accountOpen = false">
             <AdminIcon name="profile" :size="17" /> Hồ sơ cá nhân
           </RouterLink>
-          <RouterLink :to="{ name: 'Login' }" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50" @click="accountOpen = false">
+          <button type="button" class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50" @click="logout">
             <AdminIcon name="logout" :size="17" /> Đăng xuất
-          </RouterLink>
+          </button>
         </div>
       </div>
     </div>

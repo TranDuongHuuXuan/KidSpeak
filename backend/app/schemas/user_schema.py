@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel
 
 
 # ── User response schema ──────────────────────────────────────────────────────
@@ -12,14 +12,14 @@ class UserSchema(BaseModel):
     full_name: str
     email: str
     role_id: Optional[int] = None
+    role_name: Optional[str] = None
     date_of_birth: Optional[datetime] = None
     avatar: Optional[str] = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # ── Minimal register response schema ─────────────────────────────────────────
@@ -44,20 +44,4 @@ class LoginResponseSchema(BaseModel):
     token_type: str = "bearer"
     user: UserSchema
 
-    class Config:
-        from_attributes = True
-
-class UserSchema(BaseModel):
-    """Schema for user response (without password)."""
-
-    id: int
-    full_name: str
-    email: str
-    role_id: int | None = None
-    date_of_birth: datetime | None = None
-    avatar: str | None = None
-    is_active: bool = True
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+    model_config = {"from_attributes": True}

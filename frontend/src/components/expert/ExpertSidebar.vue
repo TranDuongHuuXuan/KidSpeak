@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import AdminIcon from '../admin/AdminIcon.vue'
 import logo from '../../assets/logo_project.png'
+import { authStore } from '../../stores/authStore'
 
 defineProps({
   mobileOpen: { type: Boolean, default: false },
@@ -16,7 +17,8 @@ const groups = [
   {
     title: 'Nội dung học tập',
     links: [
-      { name: 'ExpertTopics', label: 'Chủ đề', icon: 'lessons' },
+      { name: 'ExpertLessonCategories', label: 'Quản lý chủ đề', icon: 'lessons' },
+      { name: 'ExpertLessons', label: 'Quản lý bài học', icon: 'book' },
       { name: 'ExpertVocabulary', label: 'Từ vựng', icon: 'book' },
       { name: 'ExpertPaths', label: 'Lộ trình học', icon: 'route' },
     ],
@@ -45,8 +47,9 @@ const groups = [
 ]
 
 function logout() {
+  authStore.logout()
   emit('navigate')
-  router.push({ name: 'Login' })
+  router.push({ name: 'Home' })
 }
 </script>
 
