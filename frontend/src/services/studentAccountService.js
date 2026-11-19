@@ -56,17 +56,23 @@ export const studentAccountService = {
       fullName: storedProfile.fullName || storedProfile.name || defaultAccount.fullName,
     }
     const { avatar: _savedAvatar, ...profileData } = profile
-    let avatar = ''
+    let avatarKey = ''
     try {
-      avatar = localStorage.getItem(PROFILE_IMAGE_KEY) || ''
+      const savedAvatar = localStorage.getItem(PROFILE_IMAGE_KEY) || ''
+      if (savedAvatar.startsWith('data:') || /^https?:\/\//i.test(savedAvatar)) {
+        localStorage.removeItem(PROFILE_IMAGE_KEY)
+      } else {
+        avatarKey = savedAvatar
+      }
     } catch (error) {
-      throw new Error('Không thể đọc ảnh đại diện đã lưu.', { cause: error })
+      throw new Error('Không thể đọc định danh ảnh đại diện đã lưu.', { cause: error })
     }
-    setCurrentStudent(profileData, avatar)
-    return { ...profileData, avatar }
+    setCurrentStudent(profileData, '')
+    return { ...profileData, avatar: '', avatarKey }
   },
   saveProfile(updates) {
     const current = this.getProfile()
+    const avatarKey = updates.avatarKey ?? current.avatarKey
     const profile = {
       ...current,
       name: updates.name.trim(),
@@ -75,32 +81,37 @@ export const studentAccountService = {
       birthDate: updates.birthDate,
       gender: updates.gender,
       address: updates.address.trim(),
+      avatar: '',
+      avatarKey,
     }
-    const { avatar: _profileAvatar, ...profileData } = profile
-    const previousAvatar = current.avatar
-    if (updates.avatar !== undefined) {
-      try {
-        if (updates.avatar) localStorage.setItem(PROFILE_IMAGE_KEY, updates.avatar)
-        else localStorage.removeItem(PROFILE_IMAGE_KEY)
-      } catch (error) {
-        throw new Error('Không thể lưu ảnh đại diện. Hãy chọn ảnh nhỏ hơn.', { cause: error })
-      }
-    }
+    const { avatar: _profileAvatar, avatarKey: _profileAvatarKey, ...profileData } = profile
+    const previousAvatarKey = current.avatarKey
     try {
+      if (avatarKey) localStorage.setItem(PROFILE_IMAGE_KEY, avatarKey)
+      else localStorage.removeItem(PROFILE_IMAGE_KEY)
       writeJson(PROFILE_KEY, profileData, 'Không thể lưu hồ sơ vào trình duyệt.')
     } catch (error) {
-      if (updates.avatar !== undefined) {
-        try {
-          if (previousAvatar) localStorage.setItem(PROFILE_IMAGE_KEY, previousAvatar)
-          else localStorage.removeItem(PROFILE_IMAGE_KEY)
-        } catch (rollbackError) {
-          throw new Error('Không thể lưu hồ sơ, đồng thời không khôi phục được ảnh đại diện.', { cause: rollbackError })
-        }
+      try {
+        if (previousAvatarKey) localStorage.setItem(PROFILE_IMAGE_KEY, previousAvatarKey)
+        else localStorage.removeItem(PROFILE_IMAGE_KEY)
+      } catch (rollbackError) {
+        throw new Error('Không thể lưu hồ sơ, đồng thời không khôi phục được ảnh đại diện.', { cause: rollbackError })
       }
       throw error
     }
-    setCurrentStudent(profile, updates.avatar ?? current.avatar)
-    return { ...profile, avatar: updates.avatar ?? current.avatar }
+    setCurrentStudent(profile, '')
+    return profile
+  },
+  saveAvatarKey(avatarKey) {
+    try {
+      if (avatarKey) localStorage.setItem(PROFILE_IMAGE_KEY, avatarKey)
+      else localStorage.removeItem(PROFILE_IMAGE_KEY)
+    } catch (error) {
+      throw new Error('Không thể lưu định danh ảnh đại diện.', { cause: error })
+    }
+  },
+  setAvatarUrl(url) {
+    studentProfile.avatar = url || ''
   },
   updatePassword(currentPassword, newPassword) {
     let storedPassword

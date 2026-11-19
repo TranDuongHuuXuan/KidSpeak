@@ -12,7 +12,7 @@ Hệ thống được đóng gói hoàn chỉnh bằng Docker Compose gồm 5 th
 | **Frontend** | Vue 3 + Vite | `http://localhost:5173` | Giao diện học tập cho trẻ em và phụ huynh |
 | **Backend** | FastAPI (Python) | `http://localhost:8000` | Quản lý nghiệp vụ, API, xác thực, bài học (`/docs`) |
 | **AI Service** | FastAPI + PyTorch/FFmpeg | `http://localhost:8001` | Nhận diện giọng nói, thẩm định & chấm điểm phát âm (`/docs`) |
-| **Media (MinIO)** | MinIO Object Storage | `http://localhost:9000` (API)<br>`http://localhost:9001` (Console) | Lưu trữ file âm thanh mẫu, bản ghi âm của trẻ, media bài học |
+| **Media (MinIO)** | MinIO Object Storage | `http://localhost:9000` (API)<br>`http://localhost:9001` (Console) | Lưu trữ riêng tư ảnh và âm thanh; truy cập bằng URL ký hạn |
 | **Database** | PostgreSQL 16 | `localhost:5432` | Cơ sở dữ liệu chính của hệ thống |
 
 ---
@@ -27,6 +27,13 @@ File cấu hình `.env` ở thư mục gốc đã được thiết lập sẵn c
 - `MINIO_ROOT_PASSWORD`: `minioadmin`
 - `DB_USER`: `postgres`
 - `DB_PASSWORD`: `kidspeak_password`
+
+Trước khi khởi động, đặt `SECRET_KEY` trong file `.env` ở thư mục gốc bằng
+một giá trị ngẫu nhiên riêng (không dùng secret mẫu). Có thể tạo bằng lệnh:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
 ### 2. Khởi động toàn bộ hệ thống
 Tại thư mục gốc dự án (`sourecode`), chạy lệnh sau:
@@ -47,7 +54,26 @@ docker compose ps
 - **MinIO Web Console (Quản lý File Audio & Media)**: [http://localhost:9001](http://localhost:9001)
   - Tên đăng nhập: `minioadmin`
   - Mật khẩu: `minioadmin`
-  - Bucket mặc định: `kidspeak-media` (tự động khởi tạo và phân quyền tải file)
+  - Bucket mặc định: `kidspeak-media` (tự động khởi tạo ở chế độ private)
+
+Backend dùng `MediaStorageService` để kiểm tra định dạng và dung lượng trước khi lưu.
+Ảnh đại diện được lưu dưới dạng object key trong `users.avatar`; trình duyệt nhận
+presigned URL có thời hạn, không lưu URL này vào database. URL MinIO được ký cho
+trình duyệt qua `MINIO_PUBLIC_ENDPOINT` (mặc định `localhost:9000`), còn backend
+trong Docker kết nối MinIO nội bộ qua `media:9000`.
+MinIO trả nội dung qua presigned `GET` URL và hỗ trợ HTTP Range để audio có thể
+phát/tua theo khả năng của trình duyệt.
+
+Các biến media có thể cấu hình trong `.env`:
+
+- `MINIO_ENDPOINT` / `MINIO_PUBLIC_ENDPOINT`: endpoint backend và endpoint trình duyệt.
+- `MEDIA_URL_EXPIRY_SECONDS`: thời hạn presigned URL (mặc định 1800 giây).
+- `MEDIA_IMAGE_MAX_BYTES`: dung lượng ảnh tối đa (mặc định 5 MiB).
+- `MEDIA_AUDIO_MAX_BYTES`: dung lượng audio tối đa (mặc định 25 MiB).
+
+Các endpoint avatar yêu cầu Bearer token: `POST /api/media/avatar` (multipart field
+`file`), `GET /api/media/avatar` lấy URL mới, và `DELETE /api/media/avatar`.
+Service nền tảng cũng hỗ trợ JPG/JPEG, PNG, WebP, MP3, WAV, M4A, OGG và WebM.
 
 ### 5. Chạy AI app trực tiếp bằng Python và test Swagger
 Chạy từ thư mục `ai/app` (nếu cổng `8001` đang được Docker AI service sử dụng, hãy dừng service đó trước):

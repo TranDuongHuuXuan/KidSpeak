@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import TeacherUpgradeForm from '../../components/student/TeacherUpgradeForm.vue'
+import { mediaStorageService } from '../../services/mediaStorageService'
 import { studentAccountService } from '../../services/studentAccountService'
 
 const profile = ref(null)
@@ -15,6 +16,9 @@ const passwordDraft = ref({ current: '', next: '', confirm: '' })
 const upgradeHistory = ref([])
 const upgradeFormOpen = ref(false)
 const avatarInput = ref(null)
+const selectedAvatarFile = ref(null)
+const avatarRemoved = ref(false)
+const savingProfile = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 const passwordMessage = ref('')
@@ -57,8 +61,11 @@ function startEditing() {
 }
 
 function cancelEditing() {
+  if (draft.value?.avatar?.startsWith('blob:')) URL.revokeObjectURL(draft.value.avatar)
   draft.value = null
   editing.value = false
+  selectedAvatarFile.value = null
+  avatarRemoved.value = false
   errorMessage.value = ''
   if (avatarInput.value) avatarInput.value.value = ''
 }
@@ -68,31 +75,46 @@ function previewAvatar(event) {
   event.currentTarget.value = ''
   if (!file) return
   errorMessage.value = ''
-  if (!file.type.startsWith('image/')) {
-    errorMessage.value = 'Vui lòng chọn tệp hình ảnh.'
+  const extension = file.name.split('.').at(-1)?.toLowerCase()
+  if (!['jpg', 'jpeg', 'png', 'webp'].includes(extension) ||
+      !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (draft.value?.avatar?.startsWith('blob:')) URL.revokeObjectURL(draft.value.avatar)
+    selectedAvatarFile.value = null
+    avatarRemoved.value = false
+    if (draft.value) draft.value.avatar = profile.value?.avatar || ''
+    errorMessage.value = 'Vui lòng chọn ảnh JPEG, PNG hoặc WebP hợp lệ.'
     return
   }
   if (file.size > 2 * 1024 * 1024) {
+    if (draft.value?.avatar?.startsWith('blob:')) URL.revokeObjectURL(draft.value.avatar)
+    selectedAvatarFile.value = null
+    avatarRemoved.value = false
+    if (draft.value) draft.value.avatar = profile.value?.avatar || ''
     errorMessage.value = 'Ảnh đại diện không được lớn hơn 2 MB.'
     return
   }
-  const reader = new FileReader()
-  reader.onload = () => {
-    if (typeof reader.result !== 'string' || !draft.value) {
-      errorMessage.value = 'Không thể xem trước ảnh đã chọn.'
-      return
-    }
-    draft.value.avatar = reader.result
+  if (draft.value?.avatar?.startsWith('blob:')) URL.revokeObjectURL(draft.value.avatar)
+  try {
+    selectedAvatarFile.value = file
+    avatarRemoved.value = false
+    draft.value.avatar = URL.createObjectURL(file)
+  } catch (error) {
+    selectedAvatarFile.value = null
+    errorMessage.value = 'Không thể xem trước ảnh đã chọn.'
+    console.error('Không thể tạo bản xem trước ảnh đại diện.', error)
   }
-  reader.onerror = () => { errorMessage.value = 'Không thể đọc tệp hình ảnh.' }
-  reader.readAsDataURL(file)
 }
 
 function removeAvatar() {
-  if (draft.value) draft.value.avatar = ''
+  if (!draft.value) return
+  if (draft.value.avatar?.startsWith('blob:')) URL.revokeObjectURL(draft.value.avatar)
+  selectedAvatarFile.value = null
+  avatarRemoved.value = true
+  draft.value.avatar = ''
 }
 
-function saveProfile(event) {
+async function saveProfile(event) {
+  if (savingProfile.value) return
   errorMessage.value = ''
   successMessage.value = ''
   if (!event.currentTarget.reportValidity()) return
@@ -104,14 +126,33 @@ function saveProfile(event) {
     errorMessage.value = 'Ngày sinh không thể ở trong tương lai.'
     return
   }
+  savingProfile.value = true
   try {
-    profile.value = studentAccountService.saveProfile(draft.value)
+    let avatarKey = draft.value.avatarKey
+    let avatarUrl = profile.value.avatar
+    if (selectedAvatarFile.value) {
+      const uploaded = await mediaStorageService.uploadAvatar(selectedAvatarFile.value)
+      avatarKey = uploaded.object_key
+      avatarUrl = uploaded.url
+    } else if (avatarRemoved.value && avatarKey) {
+      await mediaStorageService.deleteAvatar()
+      avatarKey = ''
+      avatarUrl = ''
+    }
+
+    profile.value = studentAccountService.saveProfile({ ...draft.value, avatarKey })
+    studentAccountService.setAvatarUrl(avatarUrl)
     editing.value = false
+    if (draft.value.avatar?.startsWith('blob:')) URL.revokeObjectURL(draft.value.avatar)
     draft.value = null
-    successMessage.value = 'Đã lưu hồ sơ trên trình duyệt này.'
+    selectedAvatarFile.value = null
+    avatarRemoved.value = false
+    successMessage.value = 'Đã lưu hồ sơ thành công.'
   } catch (error) {
     console.error('Không thể lưu hồ sơ học sinh.', error)
     errorMessage.value = error.message || 'Không thể lưu hồ sơ. Hãy thử lại.'
+  } finally {
+    savingProfile.value = false
   }
 }
 
@@ -154,14 +195,20 @@ function submitUpgrade(details) {
   }
 }
 
-function loadProfile() {
+async function loadProfile() {
   errorMessage.value = ''
   try {
     profile.value = studentAccountService.getProfile()
     upgradeHistory.value = studentAccountService.getUpgradeHistory()
+    const avatar = await mediaStorageService.getAvatar()
+    const avatarKey = avatar?.object_key || ''
+    const avatarUrl = avatar?.url || ''
+    profile.value = { ...profile.value, avatarKey, avatar: avatarUrl }
+    studentAccountService.saveAvatarKey(avatarKey)
+    studentAccountService.setAvatarUrl(avatarUrl)
   } catch (error) {
     console.error('Không thể tải hồ sơ học sinh.', error)
-    errorMessage.value = error.message || 'Không thể tải hồ sơ trên trình duyệt này.'
+    errorMessage.value = error.message || 'Không thể tải hồ sơ và ảnh đại diện.'
   }
 }
 
@@ -188,14 +235,14 @@ onMounted(loadProfile)
             </div>
             <div><h3 class="text-base font-extrabold text-kids-text">{{ profile.name }}</h3><p class="mt-1 text-xs text-slate-500">{{ profile.role }} · {{ profile.fullName }}</p>
               <div v-if="editing" class="mt-2 flex flex-wrap gap-2">
-                <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-2 text-[10px] font-bold text-sky-800 hover:bg-sky-50"><AdminIcon name="image" :size="14" />{{ draft.avatar ? 'Đổi ảnh' : 'Chọn ảnh' }}<input ref="avatarInput" type="file" accept="image/*" class="sr-only" aria-label="Chọn ảnh đại diện" @change="previewAvatar" /></label>
-                <button v-if="draft.avatar" type="button" class="rounded-lg border border-rose-100 bg-white px-3 py-2 text-[10px] font-bold text-rose-600 hover:bg-rose-50" @click="removeAvatar">Xóa ảnh</button>
+                <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-2 text-[10px] font-bold text-sky-800 hover:bg-sky-50"><AdminIcon name="image" :size="14" />{{ draft.avatar ? 'Đổi ảnh' : 'Chọn ảnh' }}<input ref="avatarInput" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="sr-only" aria-label="Chọn ảnh đại diện" @change="previewAvatar" /></label>
+                <button v-if="draft.avatar || draft.avatarKey" type="button" class="rounded-lg border border-rose-100 bg-white px-3 py-2 text-[10px] font-bold text-rose-600 hover:bg-rose-50" @click="removeAvatar">Xóa ảnh</button>
                 <span class="self-center text-[9px] text-slate-400">Ảnh tối đa 2 MB · xem trước trước khi lưu</span>
               </div>
             </div>
           </div>
           <div v-if="!editing"><button type="button" class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-kids-primary px-4 text-xs font-extrabold text-kids-text hover:bg-amber-400" @click="startEditing"><AdminIcon name="edit" :size="15" />Chỉnh sửa hồ sơ</button></div>
-          <div v-else class="flex gap-2"><button type="button" class="min-h-10 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 hover:bg-slate-50" @click="cancelEditing">Hủy</button><button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-kids-cta px-4 text-xs font-extrabold text-white hover:bg-orange-600"><AdminIcon name="check" :size="15" />Lưu thay đổi</button></div>
+          <div v-else class="flex gap-2"><button type="button" class="min-h-10 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60" :disabled="savingProfile" @click="cancelEditing">Hủy</button><button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-kids-cta px-4 text-xs font-extrabold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60" :disabled="savingProfile"><AdminIcon name="check" :size="15" />{{ savingProfile ? 'Đang lưu...' : 'Lưu thay đổi' }}</button></div>
         </div>
 
         <div class="grid gap-5 p-4 sm:p-6 lg:grid-cols-2">

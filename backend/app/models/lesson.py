@@ -49,6 +49,12 @@ class Lesson(Base):
         back_populates="lesson",
         cascade="all, delete-orphan",
     )
+    comments = relationship("Comment", back_populates="lesson")
+    reviews = relationship(
+        "Review",
+        back_populates="lesson",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Lesson id={self.id} title={self.title!r}>"

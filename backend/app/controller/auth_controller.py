@@ -13,6 +13,7 @@ from app.service.auth_service import (
     InvalidCredentialsError,
     RegistrationConflictError,
 )
+from app.service.auth_service import AuthService
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
