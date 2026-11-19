@@ -1,6 +1,6 @@
 """Rename users.username to users.full_name.
 
-Revision ID: b31e7c9a4f20
+Revision ID: a12f4c8d9e31
 Revises: 69786eb07024
 """
 from typing import Sequence, Union
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "b31e7c9a4f20"
+revision: str = "a12f4c8d9e31"
 down_revision: Union[str, Sequence[str], None] = "69786eb07024"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

@@ -31,6 +31,7 @@ class Vocabulary(Base):
         back_populates="vocabulary",
         cascade="all, delete-orphan",
     )
+    comments = relationship("Comment", back_populates="vocabulary")
 
     def __repr__(self) -> str:
         return f"<Vocabulary id={self.id} word={self.word!r}>"

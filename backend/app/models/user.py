@@ -72,6 +72,36 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    course_enrollments = relationship(
+        "CourseEnrollment",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    classes_taught = relationship(
+        "Classroom",
+        back_populates="teacher",
+        cascade="all, delete-orphan",
+    )
+    comments = relationship(
+        "Comment",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    reviews = relationship(
+        "Review",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    activity_logs = relationship(
+        "ActivityLog",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    practice_histories = relationship(
+        "PracticeHistory",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"

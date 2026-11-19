@@ -23,7 +23,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Tự động khởi tạo bucket kidspeak-media và phân quyền tải công khai cho frontend
+  # Tự động khởi tạo bucket kidspeak-media ở chế độ private
   media-init:
     image: ghcr.io/coollabsio/minio:latest
     container_name: kidspeak-media-init
@@ -36,8 +36,8 @@ services:
       /bin/sh -c "
       /usr/bin/mc alias set myminio http://media:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
       /usr/bin/mc mb myminio/${MINIO_BUCKET_NAME:-kidspeak-media} --ignore-existing;
-      /usr/bin/mc anonymous set download myminio/${MINIO_BUCKET_NAME:-kidspeak-media};
-      echo 'MinIO media bucket is ready.';
+      /usr/bin/mc anonymous set none myminio/${MINIO_BUCKET_NAME:-kidspeak-media};
+      echo 'MinIO private media bucket is ready.';
       exit 0;
       "
 
@@ -81,7 +81,7 @@ services:
       DEBUG: ${DEBUG:-True}
       HOST: 0.0.0.0
       PORT: ${BACKEND_PORT:-8000}
-      SECRET_KEY: ${SECRET_KEY:-replace-with-a-very-strong-secret-key}
+      SECRET_KEY: ${SECRET_KEY:?Set a unique random SECRET_KEY in the root .env file}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       DB_HOST: ${DB_HOST:-host.docker.internal}
@@ -97,6 +97,10 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-kidspeak-media}
       MINIO_SECURE: "False"
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost:9000}
+      MEDIA_URL_EXPIRY_SECONDS: ${MEDIA_URL_EXPIRY_SECONDS:-1800}
+      MEDIA_IMAGE_MAX_BYTES: ${MEDIA_IMAGE_MAX_BYTES:-5242880}
+      MEDIA_AUDIO_MAX_BYTES: ${MEDIA_AUDIO_MAX_BYTES:-26214400}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:

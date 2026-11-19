@@ -28,6 +28,11 @@ class PracticeSession(Base):
         back_populates="session",
         cascade="all, delete-orphan",
     )
+    history = relationship(
+        "PracticeHistory",
+        back_populates="session",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<PracticeSession id={self.id} user={self.user_id}>"

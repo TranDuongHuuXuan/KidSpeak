@@ -1,6 +1,6 @@
 from functools import lru_cache
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +20,27 @@ class Settings(BaseSettings):
     secret_key: str = Field(..., alias="SECRET_KEY")
     algorithm: str = Field(default="HS256", alias="ALGORITHM")
     access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+
+    @field_validator("secret_key")
+    @classmethod
+    def validate_secret_key(cls, value: str) -> str:
+        """Reject missing-quality and known placeholder JWT signing keys."""
+        placeholders = {
+            "replace-with-a-very-strong-secret-key",
+            "your-secret-key",
+            "changeme",
+        }
+        if (
+            value != value.strip()
+            or len(value) < 32
+            or len(set(value)) < 4
+            or value.casefold() in placeholders
+        ):
+            raise ValueError(
+                "SECRET_KEY must be at least 32 characters of non-placeholder "
+                "random data; generate one with secrets.token_urlsafe(32)"
+            )
+        return value
 
     # Cơ sở dữ liệu (PostgreSQL Local)
     db_host: str = Field(default="localhost", alias="DB_HOST")
@@ -41,6 +62,10 @@ class Settings(BaseSettings):
     minio_root_password: str = Field(default="minioadmin", alias="MINIO_ROOT_PASSWORD")
     minio_bucket_name: str = Field(default="kidspeak-media", alias="MINIO_BUCKET_NAME")
     minio_secure: bool = Field(default=False, alias="MINIO_SECURE")
+    minio_public_endpoint: Optional[str] = Field(default=None, alias="MINIO_PUBLIC_ENDPOINT")
+    media_url_expiry_seconds: int = Field(default=1800, alias="MEDIA_URL_EXPIRY_SECONDS")
+    media_image_max_bytes: int = Field(default=5 * 1024 * 1024, alias="MEDIA_IMAGE_MAX_BYTES")
+    media_audio_max_bytes: int = Field(default=25 * 1024 * 1024, alias="MEDIA_AUDIO_MAX_BYTES")
 
     # Cấu hình nạp .env (Tương thích Pydantic v2 & pydantic-settings)
     model_config = SettingsConfigDict(

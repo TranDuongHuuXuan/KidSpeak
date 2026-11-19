@@ -12,9 +12,16 @@ from app.models.student_teacher import StudentTeacher              # noqa: F401
 from app.models.lesson_category import LessonCategory              # noqa: F401
 from app.models.lesson import Lesson                               # noqa: F401
 from app.models.vocabulary import Vocabulary                        # noqa: F401
+from app.models.course import Course, CourseStatus                 # noqa: F401
+from app.models.course_enrollment import CourseEnrollment           # noqa: F401
+from app.models.classroom import Classroom                         # noqa: F401
+from app.models.comment import Comment                             # noqa: F401
+from app.models.review import Review                               # noqa: F401
+from app.models.activity_log import ActivityLog                    # noqa: F401
 from app.models.practice_suggestion import PracticeSuggestion      # noqa: F401
 from app.models.practice_session import PracticeSession            # noqa: F401
 from app.models.practice_detail import PracticeDetail              # noqa: F401
+from app.models.practice_history import PracticeHistory            # noqa: F401
 
 __all__ = [
     "Base",
@@ -27,7 +34,15 @@ __all__ = [
     "LessonCategory",
     "Lesson",
     "Vocabulary",
+    "Course",
+    "CourseStatus",
+    "CourseEnrollment",
+    "Classroom",
+    "Comment",
+    "Review",
+    "ActivityLog",
     "PracticeSuggestion",
     "PracticeSession",
     "PracticeDetail",
+    "PracticeHistory",
 ]
