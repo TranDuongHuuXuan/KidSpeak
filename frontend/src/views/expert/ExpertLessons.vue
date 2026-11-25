@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import { notifyExpert } from '../../services/expertService'
 import { expertLessonService } from '../../services/expertLessonService'
+import { toast } from '../../composable/useToast'
 
 const route = useRoute()
 const lessons = ref([])
@@ -191,7 +192,7 @@ async function saveLesson() {
 }
 
 async function deleteLesson(lesson) {
-  if (!window.confirm(`Xóa bài học “${lesson.title}”? Bài học có dữ liệu liên quan sẽ không thể xóa.`)) return
+  if (!await toast.confirm(`Xóa bài học “${lesson.title}”? Bài học có dữ liệu liên quan sẽ không thể xóa.`, { title: 'X\u00e1c nh\u1eadn x\u00f3a b\u00e0i h\u1ecdc', confirmText: 'X\u00f3a', tone: 'danger' })) return
   try {
     await expertLessonService.deleteLesson(lesson.id)
     notifyExpert('Đã xóa bài học.')

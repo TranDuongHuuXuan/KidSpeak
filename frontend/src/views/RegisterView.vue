@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authService } from '../services/authService'
+import { authStore } from '../stores/authStore'
 import { setFlashToast } from '../services/flashToast'
 
 const router = useRouter()
@@ -149,6 +150,7 @@ async function handleSubmit() {
     })
     successMessage.value = result?.message || 'Tạo tài khoản thành công. Bạn có thể đăng nhập ngay.'
     setFlashToast(successMessage.value)
+    authStore.clear()
     await router.push({ name: 'Login' })
   } catch (error) {
     errors.form = error instanceof Error

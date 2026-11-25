@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import { notifyExpert } from '../../services/expertService'
 import { expertLessonService } from '../../services/expertLessonService'
+import { toast } from '../../composable/useToast'
 
 const router = useRouter()
 const categories = ref([])
@@ -127,7 +128,7 @@ async function saveCategory() {
 }
 
 async function deleteCategory(category) {
-  if (!window.confirm(`Xóa danh mục “${category.name}”? Danh mục có bài học sẽ không thể xóa.`)) return
+  if (!await toast.confirm(`Xóa danh mục “${category.name}”? Danh mục có bài học sẽ không thể xóa.`, { title: 'X\u00e1c nh\u1eadn x\u00f3a danh m\u1ee5c', confirmText: 'X\u00f3a', tone: 'danger' })) return
   try {
     await expertLessonService.deleteCategory(category.id)
     notifyExpert('Đã xóa danh mục.')

@@ -9,8 +9,7 @@ from app.utils.password import hash_password
 from app.utils.auth import generate_token
 from app.utils.password import verify_password
 from app.schemas.user_schema import UserSchema
-# Default role assigned on registration
-ROLE_USER = "USER"
+from app.core.roles import STUDENT_ROLE_ID, STUDENT_ROLE_NAME
 
 
 class RegistrationConflictError(ValueError):
@@ -37,8 +36,8 @@ class AuthService:
         Steps:
         1. Check if email already exists.
         2. Hash the password.
-        3. Save the user to the database with the USER role.
-           (System roles: USER, ADMIN, EXPERT — expert/teacher)
+        3. Save the user to the database with the STUDENT role.
+           (System roles: ADMIN, STUDENT, EXPERT — expert/teacher)
         4. Return the newly created user's information.
         """
         try:
@@ -54,19 +53,13 @@ class AuthService:
             # ── 2. Hash the password ──────────────────────────────────────────
             hashed_password = hash_password(data.password)
 
-            # ── 3. Get or auto-create the USER role ───────────────────────────
-            role = (
-                db.query(Role)
-                .filter(Role.name == ROLE_USER)
-                .first()
-            )
+            # ── 3. Get the canonical STUDENT role ───────────────────────────
+            role = db.query(Role).filter(
+                Role.id == STUDENT_ROLE_ID,
+                Role.name == STUDENT_ROLE_NAME,
+            ).first()
             if not role:
-                role = Role(
-                    name=ROLE_USER,
-                    description="Regular user",
-                )
-                db.add(role)
-                db.flush()  # get role.id before commit
+                raise RuntimeError("Canonical STUDENT role (id=2) is not configured. Run Alembic migrations.")
 
             # ── 3b. Parse date of birth ───────────────────────────────────────
             date_of_birth = datetime.combine(data.date_of_birth, datetime.min.time())

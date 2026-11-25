@@ -22,6 +22,7 @@ from app.models.practice_suggestion import PracticeSuggestion      # noqa: F401
 from app.models.practice_session import PracticeSession            # noqa: F401
 from app.models.practice_detail import PracticeDetail              # noqa: F401
 from app.models.practice_history import PracticeHistory            # noqa: F401
+from app.models.expert_upgrade_request import ExpertUpgradeRequest # noqa: F401
 
 __all__ = [
     "Base",
@@ -45,4 +46,5 @@ __all__ = [
     "PracticeSession",
     "PracticeDetail",
     "PracticeHistory",
+    "ExpertUpgradeRequest",
 ]

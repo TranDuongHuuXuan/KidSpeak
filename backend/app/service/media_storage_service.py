@@ -3,6 +3,9 @@ import io
 import logging
 import re
 import wave
+from datetime import datetime
+from urllib.parse import quote
+import zipfile
 from pathlib import PurePosixPath
 from typing import Literal, Sequence
 from uuid import uuid4
@@ -295,6 +298,89 @@ class MediaStorageService:
             "format": file_format,
         }
 
+    async def upload_document(self, file: UploadFile, folder: str) -> dict:
+        """Validate and store a private expert application document."""
+        safe_folder = self._safe_folder(folder)
+        filename = self._safe_filename(file.filename)
+        extension = PurePosixPath(filename).suffix.lower()
+        content_types = {
+            ".pdf": ("application/pdf",),
+            ".docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document",),
+            ".jpg": ("image/jpeg",), ".jpeg": ("image/jpeg",),
+            ".png": ("image/png",), ".webp": ("image/webp",),
+            ".xls": ("application/vnd.ms-excel", "application/octet-stream"),
+            ".xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",),
+        }
+        allowed = content_types.get(extension)
+        if not allowed:
+            raise MediaValidationError("Unsupported document format.")
+        limit = 10 * 1024 * 1024
+        try:
+            data = await file.read(limit + 1)
+        except Exception as error:
+            raise MediaStorageError("Could not read uploaded document.") from error
+        if not data:
+            raise MediaValidationError("The file is empty.")
+        if len(data) > limit:
+            raise MediaTooLargeError("Each document must be 10 MiB or smaller.")
+        declared_type = (file.content_type or "").split(";", 1)[0].strip().lower()
+        generic_types = {"", "application/octet-stream", "binary/octet-stream"}
+        if declared_type not in allowed and declared_type not in generic_types:
+            raise MediaValidationError("MIME type does not match the file extension.")
+        # Browsers and operating systems often report a generic MIME type for valid
+        # local files. The signature/content checks below remain authoritative.
+        actual_type = allowed[0] if declared_type in generic_types else declared_type
+
+        valid = False
+        if extension == ".pdf":
+            # Some valid PDFs contain a short preamble before the header. Readers
+            # commonly tolerate the header anywhere in the first 1024 bytes.
+            valid = b"%PDF-" in data[:1024]
+        elif extension == ".xls":
+            valid = data.startswith(bytes.fromhex("D0CF11E0A1B11AE1"))
+        elif extension in {".docx", ".xlsx"}:
+            required = {
+                ".docx": "word/document.xml",
+                ".xlsx": "xl/workbook.xml",
+            }[extension]
+            try:
+                with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                    valid = "[Content_Types].xml" in archive.namelist() and required in archive.namelist()
+            except (zipfile.BadZipFile, OSError):
+                valid = False
+        elif extension in {".jpg", ".jpeg", ".png", ".webp"}:
+            expected = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP"}[extension]
+            try:
+                with Image.open(io.BytesIO(data)) as image:
+                    valid = image.format == expected
+                    image.verify()
+            except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+                valid = False
+        if not valid:
+            raise MediaValidationError("File content does not match the declared format.")
+
+        object_key = f"{safe_folder}/{uuid4().hex}{extension}"
+        metadata = {
+            "media-type": "document",
+            "original-filename-b64": base64.urlsafe_b64encode(filename.encode("utf-8")).decode("ascii"),
+        }
+        try:
+            self._ensure_bucket()
+            self._client.put_object(
+                settings.minio_bucket_name, object_key, io.BytesIO(data),
+                length=len(data), content_type=actual_type, metadata=metadata,
+            )
+        except Exception as error:
+            logger.exception("MinIO document upload failed.")
+            raise MediaStorageError("Could not store document in MinIO.") from error
+        return {
+            "object_key": object_key,
+            "filename": filename,
+            "content_type": actual_type,
+            "file_size": len(data),
+            "uploaded_at": datetime.utcnow().isoformat(),
+        }
+
     async def upload_many(
         self,
         files: Sequence[UploadFile],
@@ -350,7 +436,7 @@ class MediaStorageService:
                 failed.append(object_key)
         return {"deleted": deleted, "failed": failed}
 
-    def get_file_url(self, object_key: str) -> str:
+    def get_file_url(self, object_key: str, download_name: str | None = None, force_download: bool = False) -> str:
         safe_key = self._safe_object_key(object_key)
         expiry_seconds = settings.media_url_expiry_seconds
         if not 1 <= expiry_seconds <= 604800:
@@ -360,10 +446,18 @@ class MediaStorageService:
                 raise MediaNotFoundError("Không tìm thấy file trong kho media.")
             from datetime import timedelta
 
+            response_headers = None
+            if download_name:
+                safe_name = self._safe_filename(download_name)
+                disposition = "attachment" if force_download else "inline"
+                response_headers = {
+                    "response-content-disposition": f"{disposition}; filename*=UTF-8''{quote(safe_name)}"
+                }
             return self._url_client.presigned_get_object(
                 settings.minio_bucket_name,
                 safe_key,
                 expires=timedelta(seconds=expiry_seconds),
+                response_headers=response_headers,
             )
         except MediaNotFoundError:
             raise

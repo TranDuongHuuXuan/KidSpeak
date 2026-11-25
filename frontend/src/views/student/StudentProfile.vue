@@ -1,10 +1,18 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { authStore } from '../../stores/authStore'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import TeacherUpgradeForm from '../../components/student/TeacherUpgradeForm.vue'
 import { mediaStorageService } from '../../services/mediaStorageService'
 import { studentAccountService } from '../../services/studentAccountService'
+import { expertUpgradeService } from '../../services/expertUpgradeService'
+import { authService } from '../../services/authService'
+import { toast } from '../../composable/useToast'
 
+const router = useRouter()
+const activating = ref(false)
+const submittingUpgrade = ref(false)
 const profile = ref(null)
 const draft = ref(null)
 const editing = ref(false)
@@ -15,6 +23,7 @@ const showConfirmPassword = ref(false)
 const passwordDraft = ref({ current: '', next: '', confirm: '' })
 const upgradeHistory = ref([])
 const upgradeFormOpen = ref(false)
+const selectedPreviousRequest = ref(null)
 const avatarInput = ref(null)
 const selectedAvatarFile = ref(null)
 const avatarRemoved = ref(false)
@@ -25,7 +34,19 @@ const passwordMessage = ref('')
 const today = new Date().toISOString().slice(0, 10)
 
 const latestRequest = computed(() => upgradeHistory.value[0] || null)
-const canRequestUpgrade = computed(() => profile.value?.role !== 'Giảng viên' && latestRequest.value?.status !== 'pending')
+const canRequestUpgrade = computed(() => profile.value?.roleName !== 'EXPERT' && (!latestRequest.value || latestRequest.value.status === 'rejected'))
+
+function openUpgradeForm(previousRequest = null) {
+  selectedPreviousRequest.value = previousRequest
+  errorMessage.value = ''
+  upgradeFormOpen.value = true
+}
+
+function closeUpgradeForm() {
+  if (submittingUpgrade.value) return
+  upgradeFormOpen.value = false
+  selectedPreviousRequest.value = null
+}
 
 function cloneProfile(value) {
   return { ...value }
@@ -44,11 +65,12 @@ function statusLabel(status) {
     pending: 'Đang chờ xét duyệt',
     approved: 'Đã được phê duyệt',
     rejected: 'Yêu cầu bị từ chối',
+    activated: 'Activated',
   }[status] || 'Chưa gửi yêu cầu'
 }
 
 function statusStyle(status) {
-  return status === 'approved'
+  return status === 'approved' || status === 'activated'
     ? 'bg-emerald-50 text-emerald-800'
     : status === 'rejected' ? 'bg-rose-50 text-rose-800' : 'bg-amber-50 text-amber-900'
 }
@@ -118,10 +140,6 @@ async function saveProfile(event) {
   errorMessage.value = ''
   successMessage.value = ''
   if (!event.currentTarget.reportValidity()) return
-  if (draft.value.phone && !/^[+()\d\s.-]{7,20}$/.test(draft.value.phone)) {
-    errorMessage.value = 'Vui lòng nhập số điện thoại hợp lệ.'
-    return
-  }
   if (draft.value.birthDate && new Date(draft.value.birthDate) > new Date()) {
     errorMessage.value = 'Ngày sinh không thể ở trong tương lai.'
     return
@@ -140,8 +158,11 @@ async function saveProfile(event) {
       avatarUrl = ''
     }
 
-    profile.value = studentAccountService.saveProfile({ ...draft.value, avatarKey })
-    studentAccountService.setAvatarUrl(avatarUrl)
+    const updated = await authService.updateCurrentUser({
+      full_name: draft.value.name,
+      date_of_birth: draft.value.birthDate || null,
+    })
+    profile.value = mapUserProfile(updated, avatarKey, avatarUrl)
     editing.value = false
     if (draft.value.avatar?.startsWith('blob:')) URL.revokeObjectURL(draft.value.avatar)
     draft.value = null
@@ -183,32 +204,84 @@ function submitPassword(event) {
   }
 }
 
-function submitUpgrade(details) {
+async function submitUpgrade(details) {
+  if (submittingUpgrade.value) return
+  submittingUpgrade.value = true
+  errorMessage.value = ''
   try {
-    const request = studentAccountService.submitUpgradeRequest(details)
+    const request = await expertUpgradeService.submit(details)
     upgradeHistory.value.unshift(request)
     upgradeFormOpen.value = false
+    selectedPreviousRequest.value = null
     successMessage.value = 'Đã gửi yêu cầu nâng cấp. Yêu cầu đang chờ quản trị viên xem xét.'
   } catch (error) {
-    console.error('Không thể gửi yêu cầu nâng cấp mô phỏng.', error)
+    console.error('Không thể gửi yêu cầu nâng cấp.', error)
     errorMessage.value = error.message || 'Không thể gửi yêu cầu. Hãy thử lại.'
+  }
+}
+
+async function activateTeacher() {
+  if (activating.value || !await toast.confirm('X\u00e1c nh\u1eadn k\u00edch ho\u1ea1t vai tr\u00f2 Expert?', { title: 'X\u00e1c nh\u1eadn k\u00edch ho\u1ea1t', confirmText: 'K\u00edch ho\u1ea1t' })) return
+  activating.value = true
+  errorMessage.value = ''
+  try {
+    const result = await expertUpgradeService.activate()
+    upgradeHistory.value = upgradeHistory.value.map((item) => item.id === latestRequest.value?.id ? { ...item, status: result.verification_status } : item)
+    const updatedUser = { ...authStore.user, role_id: result.role_id, role_name: result.role }
+    authStore.updateUser(updatedUser)
+    toast.success('Chúc mừng!', 'Bạn đã chính thức trở thành giáo viên của KidSpeak.')
+    await router.push({ name: 'ExpertDashboard' })
+  } catch (error) {
+    const message = typeof error.message === 'string' && error.message.length <= 240 && !/traceback|exception|sqlalchemy|\bat\s+\w+\.py:\d+/i.test(error.message)
+      ? error.message
+      : 'Không thể kích hoạt vai trò giáo viên. Vui lòng thử lại.'
+    toast.error('Kích hoạt chưa thành công', message)
+  } finally {
+    activating.value = false
+  }
+}
+
+async function openUpgradeDocument(request, index) {
+  try {
+    const result = await expertUpgradeService.documentUrl(request.id, index)
+    window.open(result.url, '_blank', 'noopener,noreferrer')
+  } catch (error) {
+    errorMessage.value = error.message || 'Không thể truy xuất tài liệu.'
   }
 }
 
 async function loadProfile() {
   errorMessage.value = ''
   try {
-    profile.value = studentAccountService.getProfile()
-    upgradeHistory.value = studentAccountService.getUpgradeHistory()
+    const user = await authService.getCurrentUser()
+    upgradeHistory.value = await expertUpgradeService.mine()
     const avatar = await mediaStorageService.getAvatar()
     const avatarKey = avatar?.object_key || ''
     const avatarUrl = avatar?.url || ''
-    profile.value = { ...profile.value, avatarKey, avatar: avatarUrl }
-    studentAccountService.saveAvatarKey(avatarKey)
-    studentAccountService.setAvatarUrl(avatarUrl)
+    profile.value = mapUserProfile(user, avatarKey, avatarUrl)
   } catch (error) {
     console.error('Không thể tải hồ sơ học sinh.', error)
     errorMessage.value = error.message || 'Không thể tải hồ sơ và ảnh đại diện.'
+  }
+}
+
+function mapUserProfile(user, avatarKey = '', avatar = '') {
+  const roleName = user.role_name || ''
+  return {
+    id: user.id,
+    roleId: user.role_id,
+    name: user.full_name || '',
+    fullName: user.full_name || '',
+    email: user.email || '',
+    roleName,
+    role: roleName === 'EXPERT' ? 'Expert' : roleName === 'ADMIN' ? 'Admin' : 'Student',
+    birthDate: user.date_of_birth ? String(user.date_of_birth).slice(0, 10) : '',
+    dateOfBirth: user.date_of_birth || '',
+    joinedAt: user.created_at || '',
+    updatedAt: user.updated_at || '',
+    isActive: user.is_active,
+    avatarKey,
+    avatar,
   }
 }
 
@@ -218,8 +291,8 @@ onMounted(loadProfile)
 <template>
   <section class="mx-auto max-w-[1180px] space-y-5 p-4 sm:p-6 xl:p-8">
     <header class="flex flex-wrap items-end justify-between gap-3">
-      <div><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-kids-cta">Không gian của con</p><h2 class="mt-1 text-2xl font-extrabold text-kids-text sm:text-3xl">Hồ sơ cá nhân</h2><p class="mt-2 text-sm text-slate-500">Quản lý thông tin và tùy chọn bảo mật trong bản demo.</p></div>
-      <span class="rounded-full bg-sky-50 px-3 py-1.5 text-[10px] font-bold text-sky-800">Dữ liệu lưu trên trình duyệt</span>
+      <div><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-kids-cta">Không gian cá nhân</p><h2 class="mt-1 text-2xl font-extrabold text-kids-text sm:text-3xl">Hồ sơ cá nhân</h2><p class="mt-2 text-sm text-slate-500">Thông tin tài khoản được tải và cập nhật từ hệ thống KidSpeak.</p></div>
+      <span class="rounded-full bg-sky-50 px-3 py-1.5 text-[10px] font-bold text-sky-800">Dữ liệu tài khoản</span>
     </header>
 
     <p v-if="successMessage" class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800" role="status">{{ successMessage }}</p>
@@ -252,29 +325,20 @@ onMounted(loadProfile)
               <input v-if="editing" v-model="draft.name" required minlength="2" maxlength="100" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-normal outline-none focus:border-sky-400" />
               <span v-else class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700">{{ profile.name }}</span>
             </label>
-            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Số điện thoại
-              <input v-if="editing" v-model="draft.phone" type="tel" maxlength="20" placeholder="Số điện thoại" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-normal outline-none focus:border-sky-400" />
-              <span v-else class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700">{{ profile.phone || 'Chưa cập nhật' }}</span>
-            </label>
             <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Ngày sinh
               <input v-if="editing" v-model="draft.birthDate" type="date" :max="today" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-normal outline-none focus:border-sky-400" />
               <span v-else class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700">{{ profile.birthDate ? formatDate(profile.birthDate) : 'Chưa cập nhật' }}</span>
             </label>
-            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Giới tính
-              <select v-if="editing" v-model="draft.gender" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-normal outline-none focus:border-sky-400"><option value="">Chưa chọn</option><option value="Nữ">Nữ</option><option value="Nam">Nam</option><option value="Khác">Khác</option></select>
-              <span v-else class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700">{{ profile.gender || 'Chưa cập nhật' }}</span>
-            </label>
-            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Địa chỉ
-              <input v-if="editing" v-model="draft.address" maxlength="200" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-normal outline-none focus:border-sky-400" />
-              <span v-else class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700">{{ profile.address || 'Chưa cập nhật' }}</span>
-            </label>
           </div>
           <div class="space-y-4">
             <h4 class="flex items-center gap-2 text-xs font-extrabold text-slate-700"><AdminIcon name="lock" :size="16" class="text-violet-700" />Thông tin tài khoản</h4>
-            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Họ và tên đăng ký<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.fullName }}</span></label>
+            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Mã người dùng<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.id }}</span></label>
+            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Mã vai trò<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.roleId ?? '—' }}</span></label>
             <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Email<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.email }}</span></label>
             <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Vai trò tài khoản<span class="flex min-h-10 items-center justify-between rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.role }}<AdminIcon name="lock" :size="14" /></span></label>
             <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Ngày tham gia<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ formatDate(profile.joinedAt) }}</span></label>
+            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Trạng thái tài khoản<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ profile.isActive ? 'Đang hoạt động' : 'Đã khóa' }}</span></label>
+            <label class="block space-y-1.5 text-[11px] font-bold text-slate-600">Cập nhật gần nhất<span class="flex min-h-10 items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-500">{{ formatDate(profile.updatedAt, true) }}</span></label>
             <div class="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
               <div class="flex items-center justify-between gap-3"><div><h4 class="text-xs font-extrabold text-violet-950">Bảo mật tài khoản</h4><p class="mt-1 text-[10px] text-violet-800">Đổi mật khẩu được mô phỏng trên trình duyệt.</p></div><button type="button" class="rounded-lg border border-violet-200 bg-white px-3 py-2 text-[10px] font-bold text-violet-800 hover:bg-violet-100" @click="changePassword = !changePassword">{{ changePassword ? 'Đóng' : 'Đổi mật khẩu' }}</button></div>
               <form v-if="changePassword" class="mt-4 space-y-3" @submit.prevent="submitPassword">
@@ -297,42 +361,54 @@ onMounted(loadProfile)
         </div>
         <div class="grid gap-5 p-4 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <template v-if="profile.role === 'Giảng viên'">
-              <p class="text-sm font-bold text-emerald-800">Tài khoản của bạn đã được cập nhật vai trò Giảng viên trong dữ liệu mô phỏng.</p>
+            <template v-if="profile.roleName === 'EXPERT'">
+              <p class="text-sm font-bold text-emerald-800">Tài khoản của bạn đã được cập nhật vai trò Expert.</p>
               <p class="mt-1 text-xs leading-5 text-slate-500">Không cần gửi yêu cầu nâng cấp mới.</p>
             </template>
             <template v-else-if="latestRequest?.status === 'pending'">
               <p class="text-sm font-bold text-amber-900">Yêu cầu của bạn đã được gửi và đang chờ quản trị viên xem xét.</p>
-              <p class="mt-1 text-xs text-slate-500">Mã {{ latestRequest.id }} · Gửi ngày {{ formatDate(latestRequest.submittedAt, true) }}. Vai trò hiện tại vẫn là {{ profile.role }}.</p>
+              <p class="mt-1 text-xs text-slate-500">Mã {{ latestRequest.id }} · Gửi ngày {{ formatDate(latestRequest.submitted_at || latestRequest.submittedAt, true) }}. Vai trò hiện tại vẫn là {{ profile.role }}.</p>
               <p class="mt-2 text-[10px] text-slate-400">Không thể gửi yêu cầu mới khi yêu cầu này chưa được xử lý.</p>
             </template>
             <template v-else-if="latestRequest?.status === 'approved'">
               <p class="text-sm font-bold text-emerald-800">Yêu cầu nâng cấp đã được chấp thuận.</p>
-              <p class="mt-1 text-xs text-slate-500">Vai trò tài khoản đã chuyển sang Giảng viên trong dữ liệu mô phỏng.</p>
+              <p class="mt-1 text-xs text-slate-500">Vai trò tài khoản đã chuyển sang Expert.</p>
+            </template>
+            <template v-else-if="latestRequest?.status === 'activated'">
+              <p class="text-sm font-bold text-emerald-800">\u0042\u1ea1n \u0111\u00e3 tr\u1edf th\u00e0nh gi\u00e1o vi\u00ean c\u1ee7a KidSpeak.</p>
             </template>
             <template v-else-if="latestRequest?.status === 'rejected'">
-              <p class="text-sm font-bold text-rose-800">Yêu cầu trước đó chưa được chấp thuận.</p>
-              <p class="mt-1 text-xs text-slate-500">{{ latestRequest.note || 'Không có ghi chú từ người xét duyệt.' }} Bạn có thể cập nhật thông tin và gửi lại.</p>
+              <p class="text-sm font-bold text-rose-800">Y&#234;u c&#7847;u tr&#432;&#7899;c &#273;&#243; &#273;&#227; b&#7883; t&#7915; ch&#7889;i.</p>
+              <p v-if="latestRequest.review_note || latestRequest.note" class="mt-2 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs leading-5 text-rose-900"><strong>L&#253; do t&#7915; ch&#7889;i:</strong> {{ latestRequest.review_note || latestRequest.note }}</p>
+              <p v-else class="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-900">Ng&#432;&#7901;i x&#233;t duy&#7879;t ch&#432;a ghi l&#253; do.</p>
+              <p class="mt-2 text-xs text-slate-500">B&#7841;n c&#243; th&#7875; c&#7853;p nh&#7853;t th&#244;ng tin v&#224; g&#7917;i l&#7841;i y&#234;u c&#7847;u.</p>
             </template>
             <template v-else>
               <p class="text-xs leading-5 text-slate-600">Giảng viên có thể chia sẻ chủ đề, theo dõi tiến độ học tập và trao đổi cùng học sinh được phân công. Quản trị viên sẽ xem xét thông tin trước khi thay đổi vai trò.</p>
               <p class="mt-2 text-[10px] text-slate-400">Hãy chuẩn bị thông tin chuyên môn và lý do muốn tham gia giảng dạy.</p>
             </template>
+            <button v-if="latestRequest?.status === 'approved'" type="button" :disabled="activating" class="mt-3 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-extrabold text-white disabled:opacity-50" @click="activateTeacher">{{ activating ? '\u0110ang k\u00edch ho\u1ea1t...' : '\u0054r\u1edf th\u00e0nh gi\u00e1o vi\u00ean' }}</button>
           </div>
-          <button v-if="canRequestUpgrade" type="button" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kids-cta px-4 text-xs font-extrabold text-white hover:bg-orange-600" @click="upgradeFormOpen = true"><AdminIcon name="send" :size="15" />Gửi yêu cầu nâng cấp tài khoản</button>
+          <button v-if="canRequestUpgrade" type="button" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kids-cta px-4 text-xs font-extrabold text-white hover:bg-orange-600" @click="openUpgradeForm(latestRequest?.status === 'rejected' ? latestRequest : null)"><AdminIcon name="send" :size="15" />Gửi yêu cầu nâng cấp tài khoản</button>
         </div>
         <div v-if="upgradeHistory.length" class="border-t border-slate-100 px-4 py-4 sm:px-6">
           <h4 class="text-xs font-extrabold text-slate-700">Lịch sử yêu cầu</h4>
           <div class="mt-3 space-y-2">
             <article v-for="request in upgradeHistory" :key="request.id" class="grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
-              <div><p class="text-[11px] font-bold text-slate-700">{{ request.id }} · {{ formatDate(request.submittedAt, true) }}</p><p v-if="request.reviewedAt" class="mt-1 text-[10px] text-slate-500">Xét duyệt {{ formatDate(request.reviewedAt, true) }}<span v-if="request.note"> · {{ request.note }}</span></p><p v-else class="mt-1 text-[10px] text-slate-500">Chưa có ngày xét duyệt</p></div>
-              <span class="w-fit rounded-full px-2.5 py-1 text-[9px] font-bold" :class="statusStyle(request.status)">{{ statusLabel(request.status) }}</span>
+              <div><p class="text-[11px] font-bold text-slate-700">#{{ request.id }} · {{ formatDate(request.submitted_at || request.submittedAt, true) }}</p><p v-if="request.reviewed_at || request.reviewedAt" class="mt-1 text-[10px] text-slate-500">Xét duyệt {{ formatDate(request.reviewed_at || request.reviewedAt, true) }}<span v-if="request.review_note || request.note"> · {{ request.review_note || request.note }}</span></p><p v-else class="mt-1 text-[10px] text-slate-500">Chưa có ngày xét duyệt</p></div><p v-if="request.status === 'rejected'" class="sm:col-span-2 rounded-lg bg-rose-50 px-3 py-2 text-[10px] leading-4 text-rose-800"><strong>L&#253; do t&#7915; ch&#7889;i:</strong> {{ request.review_note || request.note || 'Kh&#244;ng c&#243; l&#253; do &#273;&#432;&#7907;c ghi nh&#7853;n.' }}</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="w-fit rounded-full px-2.5 py-1 text-[9px] font-bold" :class="statusStyle(request.status)">{{ statusLabel(request.status) }}</span>
+                <button v-if="request.status === 'rejected' && profile.roleName !== 'EXPERT'" type="button" class="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-kids-cta px-3 py-1.5 text-[10px] font-bold text-white hover:bg-orange-600" @click="openUpgradeForm(request)"><AdminIcon name="send" :size="13" />G&#7917;i l&#7841;i y&#234;u c&#7847;u</button>
+              </div>
+              <div v-if="request.documents?.length" class="flex flex-wrap gap-2 sm:col-span-2">
+                <button v-for="(document, index) in request.documents" :key="document.file_key" type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-100" @click="openUpgradeDocument(request, index)">{{ document.file_name }} · xem/tải</button>
+              </div>
             </article>
           </div>
         </div>
       </section>
     </template>
 
-    <TeacherUpgradeForm v-if="upgradeFormOpen && profile" :profile="profile" @cancel="upgradeFormOpen = false" @submit="submitUpgrade" />
+    <TeacherUpgradeForm v-if="upgradeFormOpen && profile" :key="selectedPreviousRequest?.id || 'new-request'" :profile="profile" :previous-request="selectedPreviousRequest" :submitting="submittingUpgrade" :server-error="errorMessage" @cancel="closeUpgradeForm" @submit="submitUpgrade" />
   </section>
 </template>

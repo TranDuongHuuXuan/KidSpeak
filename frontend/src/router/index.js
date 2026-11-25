@@ -74,7 +74,7 @@ const routes = [
     path: '/register',
     name: 'Register',
     component: RegisterView,
-    meta: { title: 'Đăng ký' },
+    meta: { title: 'Đăng ký', guestOnly: true },
   },
   {
     path: '/expert',

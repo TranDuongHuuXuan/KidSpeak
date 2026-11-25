@@ -9,6 +9,8 @@ from app.config.config import settings
 from app.controller.auth_controller import auth_router
 from app.controller.lesson_controller import lesson_router
 from app.controller.media_controller import media_router
+from app.controller.expert_upgrade_controller import upgrade_router
+from app.controller.notification_controller import notification_router
 from app.core.logger import logger
 from app.middleware.auth_middleware import AuthMiddleware
 
@@ -117,6 +119,8 @@ async def handle_request_validation_error(
 app.include_router(auth_router, prefix=API_PREFIX)
 app.include_router(media_router, prefix=API_PREFIX)
 app.include_router(lesson_router, prefix=API_PREFIX)
+app.include_router(upgrade_router, prefix=API_PREFIX)
+app.include_router(notification_router, prefix=API_PREFIX)
 app.add_middleware(AuthMiddleware, api_prefix=API_PREFIX)
 
 # Cấu hình CORS

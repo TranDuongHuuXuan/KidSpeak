@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminIcon from '../admin/AdminIcon.vue'
 import { studentMockDashboard, studentProfile } from '../../data/studentMockData'
 import { studentAccountService } from '../../services/studentAccountService'
 import { authStore } from '../../stores/authStore'
+import { notificationService } from '../../services/notificationService'
 
 try {
   studentAccountService.getProfile()
@@ -18,6 +19,19 @@ const route = useRoute()
 const router = useRouter()
 const search = ref('')
 const notificationsOpen = ref(false)
+const notifications = ref([])
+const unreadCount = computed(() => notifications.value.filter((item) => !item.is_read).length)
+let notificationTimer
+async function loadNotifications() {
+  try { notifications.value = await notificationService.list() } catch (error) { console.error('Could not load notifications.', error) }
+}
+async function openNotification(item) {
+  if (!item.is_read) { await notificationService.markRead(item.id); item.is_read = true }
+  notificationsOpen.value = false
+  if (item.url) router.push(item.url)
+}
+onMounted(() => { loadNotifications(); notificationTimer = window.setInterval(loadNotifications, 30000) })
+onBeforeUnmount(() => window.clearInterval(notificationTimer))
 const accountOpen = ref(false)
 const breadcrumb = computed(() => route.meta.title || 'Tổng quan')
 
@@ -28,8 +42,8 @@ function submitSearch() {
   search.value = ''
 }
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  if (!await authStore.logout()) return
   accountOpen.value = false
   router.push({ name: 'Home' })
 }
@@ -61,7 +75,7 @@ function logout() {
       <div class="relative">
         <button type="button" class="relative rounded-xl p-2.5 text-slate-500 transition hover:bg-amber-50" aria-label="Thông báo" :aria-expanded="notificationsOpen" @click="notificationsOpen = !notificationsOpen; accountOpen = false">
           <AdminIcon name="bell" :size="19" />
-          <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-kids-cta ring-2 ring-white"></span>
+          <span v-if="unreadCount" class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">{{ unreadCount }}</span>
         </button>
         <div v-if="notificationsOpen" class="absolute right-0 top-full z-30 mt-3 w-[min(88vw,340px)] rounded-2xl border border-amber-100 bg-white p-4 shadow-xl">
           <div class="flex items-center justify-between">
@@ -69,10 +83,8 @@ function logout() {
             <span class="text-xs text-slate-400">{{ studentMockDashboard.activities.length }} cập nhật</span>
           </div>
           <div class="mt-3 space-y-3">
-            <div v-for="activity in studentMockDashboard.activities.slice(0, 3)" :key="activity.id" class="flex gap-3 border-t border-slate-100 pt-3">
-              <span class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-kids-secondary"></span>
-              <div><p class="text-xs font-semibold text-slate-700">{{ activity.title }}</p><p class="mt-1 text-[11px] text-slate-400">{{ activity.time }}</p></div>
-            </div>
+            <button v-for="item in notifications.slice(0, 5)" :key="item.id" type="button" class="flex w-full gap-3 border-t border-slate-100 pt-3 text-left" @click="openNotification(item)"><span class="mt-1 h-2 w-2 shrink-0 rounded-full" :class="item.is_read ? 'bg-slate-300' : 'bg-kids-secondary'"></span><span><span class="block text-xs font-semibold text-slate-700">{{ item.title }}</span><span class="mt-1 block text-[11px] text-slate-500">{{ item.message }}</span></span></button>
+            <p v-if="!notifications.length" class="border-t border-slate-100 pt-3 text-xs text-slate-400">Ch?a c? th?ng b?o.</p>
           </div>
         </div>
       </div>

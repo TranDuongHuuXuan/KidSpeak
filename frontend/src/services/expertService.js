@@ -1,15 +1,10 @@
-import { expertData, expertToast } from '../data/expertMockData'
+import { expertData } from '../data/expertMockData'
+import { toast } from '../composable/useToast'
 
 let nextId = 1
-let toastTimer
 
 export function notifyExpert(message, tone = 'success') {
-  expertToast.message = message
-  expertToast.tone = tone
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    expertToast.message = ''
-  }, 3200)
+  toast[tone === 'error' ? 'error' : 'success'](message)
 }
 
 export const expertService = {

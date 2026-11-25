@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ── User response schema ──────────────────────────────────────────────────────
@@ -20,6 +20,13 @@ class UserSchema(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserProfileUpdateSchema(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=100)
+    date_of_birth: date | None = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 # ── Minimal register response schema ─────────────────────────────────────────
