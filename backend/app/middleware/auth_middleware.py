@@ -129,6 +129,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         except HTTPException as e:
+            if isinstance(e.detail, dict) and e.detail.get("code") == "ACCOUNT_DISABLED":
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"success": False, **e.detail},
+                    headers=e.headers,
+                )
             return JSONResponse(
                 status_code=e.status_code,
                 content={"detail": e.detail},

@@ -21,6 +21,10 @@ class InvalidCredentialsError(Exception):
 
 
 class InactiveAccountError(Exception):
+    """Raised when an account has no supported role."""
+
+
+class AccountDisabledError(Exception):
     """Raised when valid credentials belong to a disabled account."""
 
 
@@ -109,7 +113,7 @@ class AuthService:
             raise InvalidCredentialsError
 
         if not existing_user.is_active:
-            raise InactiveAccountError
+            raise AccountDisabledError
 
         role_name = normalize_role_name(
             existing_user.role.name if existing_user.role else None

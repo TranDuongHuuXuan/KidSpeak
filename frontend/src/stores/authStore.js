@@ -69,6 +69,7 @@ export const authStore = {
     saveAuthSession(token, user, remember)
     state.user = user
     state.isRestored = true
+    if (typeof window !== 'undefined') window.__kidspeakAccountDisabledHandled = false
   },
 
   updateUser(user) {
