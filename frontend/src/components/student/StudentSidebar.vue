@@ -40,8 +40,8 @@ const groups = [
   },
 ]
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  if (!await authStore.logout()) return
   emit('navigate')
   router.push({ name: 'Home' })
 }

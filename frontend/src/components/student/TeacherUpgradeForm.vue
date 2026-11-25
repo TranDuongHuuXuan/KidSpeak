@@ -2,53 +2,55 @@
 import { ref } from 'vue'
 import AdminIcon from '../admin/AdminIcon.vue'
 
-defineProps({
+const props = defineProps({
   profile: { type: Object, required: true },
+  previousRequest: { type: Object, default: null },
+  submitting: { type: Boolean, default: false },
+  serverError: { type: String, default: '' },
 })
-
 const emit = defineEmits(['cancel', 'submit'])
 const form = ref({
-  specialty: '',
-  experience: '',
-  reason: '',
-  introduction: '',
+  specialty: props.previousRequest?.specialty || '',
+  experience: props.previousRequest?.experience || '',
+  reason: props.previousRequest?.reason || '',
+  introduction: props.previousRequest?.introduction || '',
 })
 const files = ref([])
+const retainedDocuments = ref([...(props.previousRequest?.documents || [])])
 const errorMessage = ref('')
-const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
-const maxFileSize = 5 * 1024 * 1024
+const allowedExtensions = ['pdf', 'docx', 'jpg', 'jpeg', 'png', 'webp', 'xls', 'xlsx']
+const maxFileSize = 10 * 1024 * 1024
 
 function addFiles(event) {
   const selectedFiles = Array.from(event.currentTarget.files || [])
   errorMessage.value = ''
   for (const file of selectedFiles) {
-    const extension = file.name.split('.').at(-1)?.toLocaleLowerCase('en')
+    const extension = file.name.split('.').at(-1)?.toLowerCase()
     if (!allowedExtensions.includes(extension)) {
-      errorMessage.value = 'Chỉ nhận tài liệu PDF, DOC, DOCX, JPG hoặc PNG.'
+      errorMessage.value = 'Unsupported document format.'
       continue
     }
     if (file.size > maxFileSize) {
-      errorMessage.value = `Tệp ${file.name} vượt quá dung lượng 5 MB.`
+      errorMessage.value = `File ${file.name} exceeds the 10 MB limit.`
       continue
     }
     if (!files.value.some((item) => item.name === file.name && item.size === file.size)) files.value.push(file)
   }
-  if (files.value.length > 5) {
-    files.value = files.value.slice(0, 5)
-    errorMessage.value = 'Bạn có thể chọn tối đa 5 tệp minh chứng.'
+  if (files.value.length + retainedDocuments.value.length > 5) {
+    files.value = files.value.slice(0, Math.max(0, 5 - retainedDocuments.value.length))
+    errorMessage.value = 'A request can contain at most 5 documents.'
   }
   event.currentTarget.value = ''
 }
 
-function removeFile(index) {
-  files.value.splice(index, 1)
-}
+function removeFile(index) { files.value.splice(index, 1) }
+function removePreviousDocument(index) { retainedDocuments.value.splice(index, 1) }
 
 function submit() {
   errorMessage.value = ''
   const reason = form.value.reason.trim()
   if (!reason) {
-    errorMessage.value = 'Vui lòng cho biết lý do muốn trở thành giảng viên.'
+    errorMessage.value = 'Please provide a reason for your teacher request.'
     return
   }
   emit('submit', {
@@ -57,7 +59,9 @@ function submit() {
     experience: form.value.experience.trim(),
     reason,
     introduction: form.value.introduction.trim(),
-    evidenceFiles: files.value.map(({ name, size, type }) => ({ name, size, type })),
+    files: [...files.value],
+    previous_request_id: props.previousRequest?.id,
+    keep_document_keys: retainedDocuments.value.map((item) => item.file_key),
   })
 }
 </script>
@@ -78,15 +82,15 @@ function submit() {
           <label class="space-y-1.5 text-xs font-bold text-slate-600">Email
             <input :value="profile.email" readonly class="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-normal text-slate-500" />
           </label>
-          <label class="space-y-1.5 text-xs font-bold text-slate-600 sm:col-span-2">Số điện thoại
-            <input :value="profile.phone || 'Chưa cập nhật'" readonly class="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-normal text-slate-500" />
+          <label class="space-y-1.5 text-xs font-bold text-slate-600 sm:col-span-2">Ngày sinh
+            <input :value="profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'" readonly class="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-normal text-slate-500" />
           </label>
           <label class="space-y-1.5 text-xs font-bold text-slate-600 sm:col-span-2">Chuyên môn <span class="font-normal text-slate-400">(không bắt buộc)</span>
             <input v-model="form.specialty" maxlength="120" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-normal outline-none focus:border-sky-400" placeholder="Ví dụ: Giáo dục mầm non, ngôn ngữ học" />
             <span class="block font-normal text-slate-400">Lĩnh vực bạn có kiến thức hoặc chứng chỉ chuyên môn.</span>
           </label>
           <label class="space-y-1.5 text-xs font-bold text-slate-600 sm:col-span-2">Kinh nghiệm giảng dạy <span class="font-normal text-slate-400">(không bắt buộc)</span>
-            <textarea v-model="form.experience" rows="2" maxlength="1000" class="w-full rounded-xl border border-slate-200 p-3 text-xs font-normal outline-none focus:border-sky-400" placeholder="Mô tả thời gian hoặc kinh nghiệm liên quan"></textarea>
+            <textarea v-model="form.experience" rows="2" maxlength="4000" class="w-full rounded-xl border border-slate-200 p-3 text-xs font-normal outline-none focus:border-sky-400" placeholder="Mô tả thời gian hoặc kinh nghiệm liên quan"></textarea>
           </label>
           <label class="space-y-1.5 text-xs font-bold text-slate-600 sm:col-span-2">Lý do muốn trở thành giảng viên <span class="text-rose-500">*</span>
             <textarea v-model="form.reason" required rows="3" maxlength="2000" class="w-full rounded-xl border border-slate-200 p-3 text-xs font-normal outline-none focus:border-sky-400" placeholder="Chia sẻ động lực và điều bạn muốn đóng góp"></textarea>
@@ -97,11 +101,15 @@ function submit() {
         </div>
 
         <div>
+          <p v-if="previousRequest" class="mb-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-900">Resubmitting rejected request #{{ previousRequest.id }}. Keep or remove previous documents below.</p>
+          <ul v-if="retainedDocuments.length" class="mb-3 space-y-1.5">
+            <li v-for="(document, index) in retainedDocuments" :key="document.file_key" class="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[10px] text-slate-600"><AdminIcon name="attach" :size="14" /><span class="min-w-0 flex-1 truncate">{{ document.file_name }}</span><span>{{ (document.file_size / 1024 / 1024).toFixed(2) }} MB</span><button type="button" class="rounded p-1 text-rose-600" aria-label="Remove previous document" @click="removePreviousDocument(index)"><AdminIcon name="delete" :size="14" /></button></li>
+          </ul>
           <p class="text-xs font-bold text-slate-600">Tài liệu minh chứng <span class="font-normal text-slate-400">(không bắt buộc)</span></p>
-          <p class="mt-1 text-[10px] text-slate-400">PDF, DOC, DOCX, JPG, PNG · tối đa 5 MB mỗi tệp · tối đa 5 tệp. Tệp chỉ được mô phỏng trên trình duyệt.</p>
+          <p class="mt-1 text-[10px] text-slate-400">Images (JPG, PNG, WebP), DOCX, Excel (XLS/XLSX) and PDF; max 10 MB per file, 5 files total. Private storage.</p>
           <label class="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-sky-300 bg-sky-50/60 px-4 py-4 text-xs font-bold text-sky-800 transition hover:bg-sky-50">
             <AdminIcon name="upload" :size="17" /> Chọn tài liệu
-            <input type="file" class="sr-only" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" aria-label="Chọn tài liệu minh chứng" @change="addFiles" />
+          <input type="file" class="sr-only" multiple accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,.xls,.xlsx" aria-label="Chọn tài liệu minh chứng" @change="addFiles" />
           </label>
           <ul v-if="files.length" class="mt-2 space-y-1.5">
             <li v-for="(file, index) in files" :key="`${file.name}-${file.size}`" class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[10px] text-slate-600">
@@ -110,10 +118,11 @@ function submit() {
             </li>
           </ul>
         </div>
+        <p v-if="serverError" class="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700" role="alert">{{ serverError }}</p>
         <p v-if="errorMessage" class="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700" role="alert">{{ errorMessage }}</p>
         <div class="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
-          <button type="button" class="min-h-10 rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-600 hover:bg-slate-50" @click="emit('cancel')">Hủy</button>
-          <button type="submit" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-kids-cta px-4 text-xs font-extrabold text-white hover:bg-orange-600"><AdminIcon name="send" :size="15" /> Gửi yêu cầu</button>
+          <button type="button" :disabled="submitting" class="min-h-10 rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50" @click="emit('cancel')">Hủy</button>
+          <button type="submit" :disabled="submitting" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-kids-cta px-4 text-xs font-extrabold text-white hover:bg-orange-600"><AdminIcon name="send" :size="15" /> {{ submitting ? 'Submitting...' : 'Submit request' }}</button>
         </div>
       </form>
     </section>

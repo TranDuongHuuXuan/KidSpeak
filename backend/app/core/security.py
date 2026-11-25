@@ -10,14 +10,10 @@ from app.core.database import get_db
 from app.models.user import User
 
 _bearer_scheme = HTTPBearer(auto_error=False)
-_ROLE_ALIASES = {"USER": "STUDENT"}
-
-
 def normalize_role_name(role_name: str | None) -> str | None:
     if not role_name:
         return None
-    normalized = role_name.strip().upper()
-    return _ROLE_ALIASES.get(normalized, normalized)
+    return role_name.strip().upper()
 
 
 def unauthorized(detail: str = "Not authenticated") -> HTTPException:

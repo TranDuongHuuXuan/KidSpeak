@@ -27,6 +27,15 @@ export const authService = {
     return response.data
   },
 
+  async updateCurrentUser(profile) {
+    const response = await apiClient.patch(API_ENDPOINTS.AUTH.ME, profile)
+    if (!response?.data?.id) {
+      throw new Error('Không thể cập nhật hồ sơ tài khoản.')
+    }
+    authStore.updateUser(response.data)
+    return response.data
+  },
+
   async register(payload) {
     return apiClient.post(
       API_ENDPOINTS.AUTH.REGISTER,

@@ -16,6 +16,10 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      // Let the browser set multipart/form-data with its matching boundary.
+      config.headers.delete('Content-Type')
+    }
     if (!config.skipAuth) {
       const accessToken = getAccessToken()
       if (accessToken) {

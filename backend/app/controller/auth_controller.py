@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -7,7 +9,8 @@ from app.core.logger import logger
 from app.core.security import get_current_user, normalize_role_name
 from app.schemas.auth_schema import RegisterSchema, LoginSchema, LoginResponseSchema
 from app.schemas.base_schema import DataResponse
-from app.schemas.user_schema import UserSchema
+from app.schemas.user_schema import UserProfileUpdateSchema, UserSchema
+from app.models.user import User
 from app.service.auth_service import (
     AuthService,
     InactiveAccountError,
@@ -27,7 +30,7 @@ auth_router = APIRouter(prefix="/auth", tags=["Auth"])
     summary="Đăng ký tài khoản mới",
     description=(
         "Nhận thông tin đăng ký, kiểm tra email đã tồn tại, "
-        "lưu người dùng vào database với role USER và kích hoạt tài khoản ngay lập tức."
+        "lưu người dùng vào database với role STUDENT và kích hoạt tài khoản ngay lập tức."
     ),
 )
 async def register(
@@ -123,3 +126,42 @@ def get_me(current_user=Depends(get_current_user)):
         }
     )
     return DataResponse(data=user)
+
+
+@auth_router.patch(
+    "/me",
+    response_model=DataResponse[UserSchema],
+    summary="Cập nhật hồ sơ tài khoản đang đăng nhập",
+)
+def update_me(
+    data: UserProfileUpdateSchema,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
+
+    changes = data.model_dump(exclude_unset=True)
+    if "full_name" in changes and changes["full_name"] is not None:
+        user.full_name = changes["full_name"].strip()
+    if "date_of_birth" in changes:
+        birth_date = changes["date_of_birth"]
+        user.date_of_birth = datetime.combine(birth_date, datetime.min.time()) if birth_date else None
+
+    try:
+        db.commit()
+        db.refresh(user)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể cập nhật hồ sơ lúc này.",
+        )
+
+    result = UserSchema.model_validate(user).model_copy(
+        update={
+            "role_name": normalize_role_name(user.role.name if user.role else None)
+        }
+    )
+    return DataResponse(data=result, message="Đã cập nhật hồ sơ.")

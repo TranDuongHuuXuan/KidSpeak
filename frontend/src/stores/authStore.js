@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { toast } from '../composable/useToast'
 import {
   clearAccessToken,
   getAccessToken,
@@ -32,8 +33,7 @@ function isTokenValid(token) {
 }
 
 function normalizeRole(role) {
-  const normalized = typeof role === 'string' ? role.trim().toUpperCase() : ''
-  return normalized === 'USER' ? 'STUDENT' : normalized
+  return typeof role === 'string' ? role.trim().toUpperCase() : ''
 }
 
 function dashboardForRole(role) {
@@ -69,6 +69,12 @@ export const authStore = {
     saveAuthSession(token, user, remember)
     state.user = user
     state.isRestored = true
+  },
+
+  updateUser(user) {
+    state.user = user
+    const token = getAccessToken()
+    if (token) saveAuthSession(token, user, isRememberedSession())
   },
 
   isAuthenticated() {
@@ -127,7 +133,14 @@ export const authStore = {
     state.isRestored = true
   },
 
-  logout() {
+  async logout() {
+    const confirmed = await toast.confirm('B\u1ea1n c\u00f3 ch\u1eafc ch\u1eafn mu\u1ed1n \u0111\u0103ng xu\u1ea5t kh\u00f4ng?', {
+      title: 'X\u00e1c nh\u1eadn \u0111\u0103ng xu\u1ea5t',
+      confirmText: '\u0110\u0103ng xu\u1ea5t',
+      tone: 'danger',
+    })
+    if (!confirmed) return false
     this.clear()
+    return true
   },
 }

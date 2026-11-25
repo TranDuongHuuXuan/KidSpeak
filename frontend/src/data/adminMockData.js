@@ -1,4 +1,5 @@
 import { reactive, ref } from 'vue'
+import { toast } from '../composable/useToast'
 
 export const adminData = reactive({
   users: [
@@ -122,15 +123,8 @@ export const adminData = reactive({
 })
 
 export const defaultSettings = Object.freeze({ ...adminData.settings })
-export const toastMessage = ref('')
-let toastTimer
-
 export function notify(message) {
-  toastMessage.value = message
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    toastMessage.value = ''
-  }, 2800)
+  toast.success(message)
 }
 
 export function formatDate(date) {

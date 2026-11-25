@@ -4,6 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import { expertData } from '../../data/expertMockData'
 import { expertService, notifyExpert } from '../../services/expertService'
+import { authService } from '../../services/authService'
+import { mediaStorageService } from '../../services/mediaStorageService'
+import { toast } from '../../composable/useToast'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,9 +22,8 @@ const form = ref({})
 const messageSearch = ref('')
 const messageDraft = ref('')
 const messageList = ref(null)
-const profileImageKey = 'kidspeak-expert-profile-image'
 const profileImage = ref('')
-const profile = ref({ name: 'Trần Thị Ngọc', email: 'ngoc.tran@kidspeak.vn', specialization: 'Giáo dục mầm non · Luyện phát âm', phone: '0901 234 567', bio: 'Đồng hành cùng trẻ trong hành trình phát triển ngôn ngữ và phát âm tự tin.' })
+const profile = ref({ id: null, name: '', email: '', dateOfBirth: '', role: '', createdAt: '', updatedAt: '', isActive: false })
 
 const configs = {
   topics: {
@@ -106,12 +108,15 @@ const config = computed(() => configs[section.value])
 const isMessages = computed(() => section.value === 'messages')
 const isProfile = computed(() => section.value === 'profile')
 const isSettings = computed(() => section.value === 'settings')
-watch(isProfile, (visible) => {
+watch(isProfile, async (visible) => {
   if (!visible) return
   try {
-    profileImage.value = localStorage.getItem(profileImageKey) || ''
-  } catch {
-    notifyExpert('Không thể đọc ảnh hồ sơ đã lưu trong trình duyệt.', 'error')
+    const user = await authService.getCurrentUser()
+    const avatar = await mediaStorageService.getAvatar()
+    profile.value = mapAccountProfile(user)
+    profileImage.value = avatar?.url || ''
+  } catch (error) {
+    notifyExpert(error.message || 'Không thể tải hồ sơ tài khoản.', 'error')
   }
 }, { immediate: true })
 const rawRows = computed(() => config.value ? expertData[config.value.collection] : [])
@@ -193,8 +198,8 @@ function saveRecord() {
   }
 }
 
-function removeRecord(row) {
-  if (!window.confirm(`Bạn có chắc muốn xóa “${row.title || row.word || row.name}”?`)) return
+async function removeRecord(row) {
+  if (!await toast.confirm(`Bạn có chắc muốn xóa “${row.title || row.word || row.name}”?`, { title: 'X\u00e1c nh\u1eadn x\u00f3a', confirmText: 'X\u00f3a', tone: 'danger' })) return
   try {
     expertService.remove(config.value.collection, row.id)
     notifyExpert('Đã xóa khỏi dữ liệu demo.')
@@ -212,8 +217,8 @@ function messageStudent(student) {
   router.push({ name: 'ExpertMessages', query: { student: student.id } })
 }
 
-function adjustDifficulty(student) {
-  if (!window.confirm(`Xác nhận điều chỉnh độ khó cho ${student.name}? Thay đổi này chỉ áp dụng trong dữ liệu demo.`)) return
+async function adjustDifficulty(student) {
+  if (!await toast.confirm(`Xác nhận điều chỉnh độ khó cho ${student.name}? Thay đổi này chỉ áp dụng trong dữ liệu demo.`, { title: 'X\u00e1c nh\u1eadn \u0111i\u1ec1u ch\u1ec9nh', confirmText: 'Ti\u1ebfp t\u1ee5c' })) return
   student.status = 'Đang theo dõi'
   notifyExpert('Đã cập nhật trạng thái theo dõi trong dữ liệu demo.')
 }
@@ -238,18 +243,41 @@ function sendMessage() {
   }
 }
 
-function saveProfile(event) {
-  if (!event.currentTarget.reportValidity()) return
-  notifyExpert('Đã lưu hồ sơ trong phiên demo.')
+function mapAccountProfile(user) {
+  return {
+    id: user.id,
+    roleId: user.role_id,
+    name: user.full_name || '',
+    email: user.email || '',
+    dateOfBirth: user.date_of_birth ? String(user.date_of_birth).slice(0, 10) : '',
+    role: user.role_name || '',
+    createdAt: user.created_at || '',
+    updatedAt: user.updated_at || '',
+    isActive: user.is_active,
+  }
 }
 
-function updateProfileImage(event) {
+async function saveProfile(event) {
+  if (!event.currentTarget.reportValidity()) return
+  try {
+    const user = await authService.updateCurrentUser({
+      full_name: profile.value.name,
+      date_of_birth: profile.value.dateOfBirth || null,
+    })
+    profile.value = mapAccountProfile(user)
+    notifyExpert('Đã cập nhật hồ sơ tài khoản.')
+  } catch (error) {
+    notifyExpert(error.message || 'Không thể cập nhật hồ sơ.', 'error')
+  }
+}
+
+async function updateProfileImage(event) {
   const input = event.currentTarget
   const file = input.files?.[0]
   if (!file) return
 
-  if (!file.type.startsWith('image/')) {
-    notifyExpert('Vui lòng chọn tệp hình ảnh.', 'error')
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    notifyExpert('Vui lòng chọn ảnh JPEG, PNG hoặc WebP.', 'error')
     input.value = ''
     return
   }
@@ -260,33 +288,23 @@ function updateProfileImage(event) {
     return
   }
 
-  const reader = new FileReader()
-  reader.onload = () => {
-    if (typeof reader.result !== 'string') {
-      notifyExpert('Không thể đọc tệp hình ảnh.', 'error')
-      return
-    }
-
-    try {
-      localStorage.setItem(profileImageKey, reader.result)
-      profileImage.value = reader.result
-      notifyExpert('Đã cập nhật ảnh đại diện trên trình duyệt này.')
-    } catch {
-      notifyExpert('Không thể lưu ảnh trong trình duyệt. Hãy thử ảnh nhỏ hơn.', 'error')
-    }
-  }
-  reader.onerror = () => notifyExpert('Không thể đọc tệp hình ảnh.', 'error')
-  reader.readAsDataURL(file)
   input.value = ''
+  try {
+    const uploaded = await mediaStorageService.uploadAvatar(file)
+    profileImage.value = uploaded.url || ''
+    notifyExpert('Đã cập nhật ảnh đại diện.')
+  } catch (error) {
+    notifyExpert(error.message || 'Không thể tải ảnh đại diện lên.', 'error')
+  }
 }
 
-function removeProfileImage() {
+async function removeProfileImage() {
   try {
-    localStorage.removeItem(profileImageKey)
+    await mediaStorageService.deleteAvatar()
     profileImage.value = ''
-    notifyExpert('Đã xóa ảnh đại diện đã lưu.')
-  } catch {
-    notifyExpert('Không thể xóa ảnh đại diện khỏi bộ nhớ trình duyệt.', 'error')
+    notifyExpert('Đã xóa ảnh đại diện.')
+  } catch (error) {
+    notifyExpert(error.message || 'Không thể xóa ảnh đại diện.', 'error')
   }
 }
 
@@ -444,20 +462,23 @@ function ttsNotice() {
 
     <section v-else-if="isProfile" class="grid min-h-full gap-5 xl:h-full xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_320px]">
       <form class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7" @submit.prevent="saveProfile">
-        <h3 class="font-bold text-slate-800">Thông tin chuyên môn</h3><p class="mt-1 text-sm text-slate-400">Cập nhật hồ sơ hiển thị cho học viên được phân công.</p>
+        <h3 class="font-bold text-slate-800">Thông tin tài khoản</h3><p class="mt-1 text-sm text-slate-400">Thông tin được tải từ tài khoản KidSpeak của bạn.</p>
         <div class="mt-6 grid gap-4 sm:grid-cols-2">
           <label class="space-y-1.5 text-xs font-semibold text-slate-600">Họ và tên<input v-model="profile.name" required class="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400" /></label>
-          <label class="space-y-1.5 text-xs font-semibold text-slate-600">Email<input v-model="profile.email" type="email" required class="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400" /></label>
-          <label class="space-y-1.5 text-xs font-semibold text-slate-600">Số điện thoại<input v-model="profile.phone" type="tel" class="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400" /></label>
-          <label class="space-y-1.5 text-xs font-semibold text-slate-600">Chuyên môn<input v-model="profile.specialization" required class="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400" /></label>
-          <label class="space-y-1.5 text-xs font-semibold text-slate-600 sm:col-span-2">Giới thiệu<textarea v-model="profile.bio" rows="4" class="w-full rounded-xl border border-slate-200 p-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400"></textarea></label>
+          <label class="space-y-1.5 text-xs font-semibold text-slate-600">Email<span class="flex h-11 items-center rounded-xl bg-slate-50 px-3 text-sm font-normal text-slate-500">{{ profile.email || '—' }}</span></label>
+          <label class="space-y-1.5 text-xs font-semibold text-slate-600">Ngày sinh<input v-model="profile.dateOfBirth" type="date" class="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400" /></label>
+          <div class="space-y-1.5 text-xs font-semibold text-slate-600">Vai trò<span class="flex h-11 items-center rounded-xl bg-slate-50 px-3 text-sm font-normal text-slate-500">{{ profile.role || '—' }}</span></div>
+          <div class="space-y-1.5 text-xs font-semibold text-slate-600">Mã vai trò<span class="flex h-11 items-center rounded-xl bg-slate-50 px-3 text-sm font-normal text-slate-500">{{ profile.roleId ?? '—' }}</span></div>
+          <div class="space-y-1.5 text-xs font-semibold text-slate-600">Trạng thái<span class="flex h-11 items-center rounded-xl bg-slate-50 px-3 text-sm font-normal text-slate-500">{{ profile.isActive ? 'Đang hoạt động' : 'Đã khóa' }}</span></div>
+          <div class="space-y-1.5 text-xs font-semibold text-slate-600">Ngày tạo<span class="flex h-11 items-center rounded-xl bg-slate-50 px-3 text-sm font-normal text-slate-500">{{ profile.createdAt ? new Date(profile.createdAt).toLocaleString('vi-VN') : '—' }}</span></div>
+          <div class="space-y-1.5 text-xs font-semibold text-slate-600">Cập nhật gần nhất<span class="flex h-11 items-center rounded-xl bg-slate-50 px-3 text-sm font-normal text-slate-500">{{ profile.updatedAt ? new Date(profile.updatedAt).toLocaleString('vi-VN') : '—' }}</span></div>
         </div>
         <button type="submit" class="mt-auto self-start rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">Lưu hồ sơ</button>
       </form>
       <article class="h-full rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
         <div class="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-xl font-bold text-blue-700">
           <img v-if="profileImage" :src="profileImage" alt="Ảnh đại diện giảng viên" class="h-full w-full object-cover" />
-          <span v-else>TN</span>
+          <span v-else>{{ profile.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase('vi') || 'EX' }}</span>
         </div>
         <div class="mt-3 flex justify-center gap-2">
           <label class="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
@@ -466,10 +487,9 @@ function ttsNotice() {
           </label>
           <button v-if="profileImage" type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50" @click="removeProfileImage">Xóa ảnh</button>
         </div>
-        <p class="mt-2 text-[11px] text-slate-400">Ảnh định dạng hình ảnh, tối đa 2 MB. Được lưu trên trình duyệt này.</p>
-        <h3 class="mt-4 font-bold text-slate-800">{{ profile.name }}</h3><p class="mt-1 text-xs text-slate-500">Giảng viên · KidSpeak</p>
-        <div class="mt-5 space-y-2 border-t border-slate-100 pt-4 text-left text-xs text-slate-500"><p>{{ profile.email }}</p><p>{{ profile.specialization }}</p><p>{{ expertData.students.length }} học viên được phân công</p></div>
-        <p class="mt-4 rounded-xl bg-blue-50 p-3 text-left text-xs leading-5 text-blue-700">Giao diện demo không xác minh danh tính. Quyền truy cập dữ liệu phải được backend kiểm tra.</p>
+        <p class="mt-2 text-[11px] text-slate-400">Ảnh JPEG, PNG hoặc WebP, tối đa 2 MB. Được lưu riêng tư trên MinIO.</p>
+        <h3 class="mt-4 font-bold text-slate-800">{{ profile.name || 'Chưa cập nhật tên' }}</h3><p class="mt-1 text-xs text-slate-500">{{ profile.role || 'Expert' }} · KidSpeak</p>
+        <div class="mt-5 space-y-2 border-t border-slate-100 pt-4 text-left text-xs text-slate-500"><p>{{ profile.email || '—' }}</p><p>Mã tài khoản: {{ profile.id || '—' }}</p><p>{{ expertData.students.length }} học viên được phân công</p></div>
       </article>
     </section>
 

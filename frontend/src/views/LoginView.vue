@@ -1,29 +1,16 @@
 <script setup>
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authService } from '../services/authService'
 import { authStore } from '../stores/authStore'
 import { consumeFlashToast, setFlashToast } from '../services/flashToast'
+import { toast } from '../composable/useToast'
 
 const router = useRouter()
 const route = useRoute()
-const successToast = ref('')
-const errorToast = ref('')
-let successToastTimer
-let errorToastTimer
-
 onMounted(() => {
-  successToast.value = consumeFlashToast() || ''
-  if (successToast.value) {
-    successToastTimer = setTimeout(() => {
-      successToast.value = ''
-    }, 4000)
-  }
-})
-
-onUnmounted(() => {
-  clearTimeout(successToastTimer)
-  clearTimeout(errorToastTimer)
+  const message = consumeFlashToast()
+  if (message) toast.success(message)
 })
 
 // ---------------------------------------------------------------------------
@@ -68,11 +55,7 @@ function validatePassword() {
 }
 
 function showLoginError(message) {
-  errorToast.value = message
-  clearTimeout(errorToastTimer)
-  errorToastTimer = setTimeout(() => {
-    errorToast.value = ''
-  }, 4000)
+  toast.error('Không thể đăng nhập', message)
 }
 
 function getLoginErrorMessage(error) {
@@ -142,59 +125,6 @@ const inputBad = 'border-kids-cta focus:border-kids-cta'
 
 <template>
   <main class="min-h-screen bg-kids-bg text-kids-text lg:grid lg:grid-cols-2">
-    <Transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="-translate-y-2 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="-translate-y-2 opacity-0"
-    >
-      <div
-        v-if="successToast"
-        class="fixed right-4 top-4 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-feedback-success/30 bg-kids-surface p-4 text-kids-text shadow-xl sm:right-6 sm:top-6"
-        role="status"
-        aria-live="polite"
-      >
-        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-feedback-success/15 text-feedback-success" aria-hidden="true">
-          ✓
-        </span>
-        <p class="flex-1 text-sm font-semibold">{{ successToast }}</p>
-        <button
-          type="button"
-          class="rounded-lg px-1 text-lg leading-none text-kids-text/60 hover:text-kids-text"
-          aria-label="Đóng thông báo"
-          @click="successToast = ''"
-        >
-          &times;
-        </button>
-      </div>
-    </Transition>
-    <Transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="-translate-y-2 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="-translate-y-2 opacity-0"
-    >
-      <div
-        v-if="errorToast"
-        class="fixed right-4 top-4 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-kids-cta/40 bg-kids-surface p-4 text-kids-text shadow-xl sm:right-6 sm:top-6"
-        role="alert"
-        aria-live="assertive"
-      >
-        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-kids-cta/15 text-kids-cta" aria-hidden="true">!</span>
-        <p class="flex-1 text-sm font-semibold">{{ errorToast }}</p>
-        <button
-          type="button"
-          class="rounded-lg px-1 text-lg leading-none text-kids-text/60 hover:text-kids-text"
-          aria-label="Đóng thông báo"
-          @click="errorToast = ''"
-        >&times;</button>
-      </div>
-    </Transition>
-
     <!-- ===================== Khu minh họa (desktop) ===================== -->
     <section
       class="relative hidden flex-col items-center justify-center gap-8 overflow-hidden px-12 py-12 lg:flex"

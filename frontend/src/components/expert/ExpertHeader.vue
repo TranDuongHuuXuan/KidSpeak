@@ -21,8 +21,8 @@ function submitSearch() {
   search.value = ''
 }
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  if (!await authStore.logout()) return
   router.push({ name: 'Home' })
 }
 </script>
