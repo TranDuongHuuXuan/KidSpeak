@@ -51,7 +51,10 @@ def resolve_current_user(token: str, db: Session) -> User:
     if not user.is_active:
         raise HTTPException(
             status_code=403,
-            detail="Tài khoản đã bị vô hiệu hóa.",
+            detail={
+                "code": "ACCOUNT_DISABLED",
+                "message": "Tài khoản của quý khách đã bị khóa. Vui lòng liên hệ bộ phận hỗ trợ để được giải quyết.",
+            },
         )
     if not user.role:
         raise HTTPException(

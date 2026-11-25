@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,7 @@ from app.schemas.user_schema import UserProfileUpdateSchema, UserSchema
 from app.models.user import User
 from app.service.auth_service import (
     AuthService,
+    AccountDisabledError,
     InactiveAccountError,
     InvalidCredentialsError,
     RegistrationConflictError,
@@ -98,10 +100,20 @@ async def login(
             detail="Email hoặc mật khẩu không chính xác.",
         )
 
+    except AccountDisabledError:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "success": False,
+                "code": "ACCOUNT_DISABLED",
+                "message": "Tài khoản của quý khách đã bị khóa. Vui lòng liên hệ bộ phận hỗ trợ để được giải quyết.",
+            },
+        )
+
     except InactiveAccountError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản không hoạt động hoặc chưa được cấp quyền hợp lệ.",
+            detail="Tài khoản chưa được cấp quyền hợp lệ.",
         )
 
     except Exception:

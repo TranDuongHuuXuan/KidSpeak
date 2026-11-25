@@ -193,7 +193,7 @@ router.beforeEach(async (to) => {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('kidspeak:auth-expired', () => {
-    if (router.currentRoute.value.matched.some((record) => record.meta.requiresAuth)) {
+    if (router.currentRoute.value.name !== 'Login') {
       void router.replace({
         name: 'Login',
         query: { redirect: router.currentRoute.value.fullPath },

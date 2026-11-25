@@ -37,10 +37,13 @@ export function normalizeApiError(error) {
   const data = response?.data ?? null
 
   if (response) {
-    const serverMessage = getValidationMessage(data?.detail) || data?.message
+    const detailMessage = typeof data?.detail === 'object'
+      ? data.detail?.message
+      : getValidationMessage(data?.detail)
+    const serverMessage = detailMessage || data?.message
     return new ApiError(
       serverMessage || getStatusMessage(status),
-      { status, code: error.code ?? null, data, cause: error },
+      { status, code: data?.code || data?.detail?.code || error.code || null, data, cause: error },
     )
   }
 

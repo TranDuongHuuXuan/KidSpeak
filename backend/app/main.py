@@ -11,6 +11,7 @@ from app.controller.lesson_controller import lesson_router
 from app.controller.media_controller import media_router
 from app.controller.expert_upgrade_controller import upgrade_router
 from app.controller.notification_controller import notification_router
+from app.controller.admin_user_controller import admin_user_router
 from app.core.logger import logger
 from app.middleware.auth_middleware import AuthMiddleware
 
@@ -107,12 +108,13 @@ async def handle_request_validation_error(
         if message not in messages:
             messages.append(message)
 
+    is_admin_user_api = request.url.path.startswith(f"{API_PREFIX}/admin/users")
+    content = {"success": False, "message": " ".join(messages)}
+    if is_admin_user_api:
+        content["code"] = "VALIDATION_ERROR"
     return JSONResponse(
-        status_code=400,
-        content={
-            "success": False,
-            "message": " ".join(messages),
-        },
+        status_code=422 if is_admin_user_api else 400,
+        content=content,
     )
 
 
@@ -121,6 +123,7 @@ app.include_router(media_router, prefix=API_PREFIX)
 app.include_router(lesson_router, prefix=API_PREFIX)
 app.include_router(upgrade_router, prefix=API_PREFIX)
 app.include_router(notification_router, prefix=API_PREFIX)
+app.include_router(admin_user_router, prefix=API_PREFIX)
 app.add_middleware(AuthMiddleware, api_prefix=API_PREFIX)
 
 # Cấu hình CORS

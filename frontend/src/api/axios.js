@@ -35,7 +35,17 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401 && !error.config?.skipAuth) {
+    const errorCode = error.response?.data?.code || error.response?.data?.detail?.code
+    if (error.response?.status === 403 && errorCode === 'ACCOUNT_DISABLED') {
+      authStore.clear()
+      if (typeof window !== 'undefined' && !window.__kidspeakAccountDisabledHandled) {
+        window.__kidspeakAccountDisabledHandled = true
+        window.dispatchEvent(new Event('kidspeak:auth-expired'))
+        window.dispatchEvent(new CustomEvent('kidspeak:account-disabled', {
+          detail: { message: error.response.data?.message || error.response.data?.detail?.message },
+        }))
+      }
+    } else if (error.response?.status === 401 && !error.config?.skipAuth) {
       authStore.clear()
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('kidspeak:auth-expired'))
